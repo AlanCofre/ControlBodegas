@@ -63,12 +63,11 @@ export default function TransferListPage() {
             Listado general del flujo operacional
           </p>
         </div>
-
         <Link
-          to="/"
-          className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 hover:text-gray-900"
+          to="/transfers/new"
+          className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 transition inline-block"
         >
-          ← Volver al panel
+          Nueva Transferencia
         </Link>
       </div>
 
