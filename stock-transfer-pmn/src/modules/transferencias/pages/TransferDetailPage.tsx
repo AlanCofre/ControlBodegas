@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
+import StockValidationFlow from '../components/StockValidationFlow'
+import SupervisorEvaluation from '../components/SupervisorEvaluation'
 import type { TransferStatus } from '../types'
 
 const getStatusColor = (status: TransferStatus) => {
@@ -217,6 +219,32 @@ export default function TransferDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Flujo Operacional - Evaluación Supervisor */}
+      {transfer.estado === 'CREADA' && (
+        <SupervisorEvaluation
+          transferId={transfer.id}
+          estado={transfer.estado}
+          onApprove={() => approveTransfer(transfer.id)}
+          onReject={(motivo) => rejectTransfer(transfer.id, motivo)}
+        />
+      )}
+
+      {/* Flujo Operacional - Validación de Stock */}
+      {transfer.estado === 'APROBADA' && (
+        <StockValidationFlow
+          transferId={transfer.id}
+          producto={transfer.producto}
+          cantidad={transfer.cantidad}
+          origen={transfer.origen}
+          onValidationComplete={(success) => {
+            if (success) {
+              reserveTransfer(transfer.id)
+            }
+          }}
+          autoStart
+        />
+      )}
 
       {/* Timeline */}
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">

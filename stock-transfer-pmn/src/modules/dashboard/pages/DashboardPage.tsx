@@ -69,9 +69,17 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-gray-600">Panel operacional en tiempo real - {stats.total} transferencias activas</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-1 text-gray-600">Panel operacional en tiempo real - {stats.total} transferencias activas</p>
+        </div>
+        <Link
+          to="/transfers/new"
+          className="px-4 py-2 rounded-lg bg-blue-600 font-medium text-white hover:bg-blue-700 transition"
+        >
+          + Nueva Transferencia
+        </Link>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -121,6 +129,37 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* Alertas Operacionales */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="mt-1">
+            <svg className="w-6 h-6 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18.664 3.217A1 1 0 00.337 2.283l2.13 10.652a1 1 0 001.965 0L6 5a1 1 0 011.5-.5l2.5 2 2.5-2a1 1 0 011.5.5l1.568 7.935c2.4 0 4.5-2.1 4.5-4.682V5.335a1 1 0 00-1.336-.5z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-amber-900">Alertas Operacionales</h3>
+            <div className="mt-2 space-y-2 text-sm text-amber-800">
+              {stats.errors > 0 && (
+                <p>• {stats.errors} transferencia(s) con error de reserva requieren evaluación</p>
+              )}
+              {stats.withDifference > 0 && (
+                <p>• {stats.withDifference} transferencia(s) con diferencia en recepción</p>
+              )}
+              {stats.rejected > 0 && (
+                <p>• {stats.rejected} solicitud(es) rechazada(s) - revisar motivos</p>
+              )}
+              {stats.pending > 2 && (
+                <p>• {stats.pending} transferencias aguardando aprobación del supervisor</p>
+              )}
+              {stats.errors === 0 && stats.withDifference === 0 && stats.rejected === 0 && stats.pending <= 2 && (
+                <p className="text-green-700">✓ Sistema operacional normal - No hay alertas críticas</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-gray-900">Actividad Reciente</h2>
@@ -160,52 +199,6 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-blue-900 mb-3">Flujo Principal (Happy Path)</h3>
-          <div className="space-y-2 text-xs text-blue-700">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-600"></span>
-              CREADA → APROBADA
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-600"></span>
-              APROBADA → RESERVADA
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-600"></span>
-              RESERVADA → EN_TRANSITO
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-600"></span>
-              EN_TRANSITO → RECIBIDA_SIN_DIFERENCIA
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-600"></span>
-              RECIBIDA_SIN_DIFERENCIA → CERRADA
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Estados Críticos</h3>
-          <div className="space-y-2 text-xs text-gray-700">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-red-600"></span>
-              RECHAZADA - Transferencia rechazada
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-red-600"></span>
-              ERROR_RESERVA - Falla en reserva de producto
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-orange-600"></span>
-              CON_DIFERENCIA - Diferencia en recepción
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   )

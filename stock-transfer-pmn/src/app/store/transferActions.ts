@@ -4,6 +4,7 @@ const generateId = () => Math.random().toString(36).substr(2, 9).toUpperCase()
 
 export interface TransferAction {
   type:
+    | 'CREATE_TRANSFER'
     | 'APPROVE_TRANSFER'
     | 'REJECT_TRANSFER'
     | 'RESERVE_TRANSFER'
@@ -41,6 +42,47 @@ const createAuditEvent = (
 
 export const transferReducer = (state: TransferState, action: TransferAction): TransferState => {
   switch (action.type) {
+    case 'CREATE_TRANSFER': {
+      const producto = action.payload?.producto as string
+      const cantidad = action.payload?.cantidad as number
+      const origen = action.payload?.origen as string
+      const destino = action.payload?.destino as string
+      const prioridad = (action.payload?.prioridad as any) || 'normal'
+      const descripcion = (action.payload?.descripcion as string) || ''
+
+      const newId = `TRF-${String(state.transfers.length + 1).padStart(3, '0')}`
+      const timestamp = new Date().toISOString()
+
+      const eventoCreacion = createAuditEvent(
+        newId,
+        'Rodrigo M.',
+        'crear',
+        undefined,
+        'CREADA',
+        `Transferencia creada: ${cantidad} unidades de ${producto}`,
+      )
+
+      const newTransfer: Transfer = {
+        id: newId,
+        producto,
+        cantidad,
+        origen,
+        destino,
+        prioridad,
+        estado: 'CREADA',
+        creada_por: 'Rodrigo M.',
+        fecha_creacion: timestamp,
+        fecha_actualizacion: timestamp,
+        descripcion,
+        eventos: [eventoCreacion],
+      }
+
+      state.transfers.push(newTransfer)
+      state.auditLog.push(eventoCreacion)
+
+      return { ...state }
+    }
+
     case 'APPROVE_TRANSFER': {
       const id = action.payload?.transferId as string
       const transfer = state.transfers.find((t) => t.id === id)

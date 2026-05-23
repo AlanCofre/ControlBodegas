@@ -6,6 +6,7 @@ import { initialTransfers } from './initialData'
 interface TransferContextType {
   transfers: Transfer[]
   auditLog: AuditEvent[]
+  createTransfer: (producto: string, cantidad: number, origen: string, destino: string, prioridad: string, descripcion?: string) => string
   approveTransfer: (transferId: string) => void
   rejectTransfer: (transferId: string, motivo: string) => void
   reserveTransfer: (transferId: string) => void
@@ -32,6 +33,17 @@ export function TransferProvider({ children }: { children: ReactNode }) {
   const value: TransferContextType = {
     transfers: state.transfers,
     auditLog: state.auditLog,
+    createTransfer: (producto: string, cantidad: number, origen: string, destino: string, prioridad: string, descripcion?: string) => {
+      const newTransferLength = state.transfers.length + 1
+      const newId = `TRF-${String(newTransferLength).padStart(3, '0')}`
+      
+      dispatchAction({
+        type: 'CREATE_TRANSFER',
+        payload: { producto, cantidad, origen, destino, prioridad, descripcion },
+      })
+      
+      return newId
+    },
     approveTransfer: (transferId: string) => {
       dispatchAction({
         type: 'APPROVE_TRANSFER',

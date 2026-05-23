@@ -82,9 +82,12 @@ export default function TransferListPage() {
           <h1 className="text-3xl font-bold text-gray-900">Transferencias</h1>
           <p className="mt-1 text-gray-600">Gestión operacional de transferencias de stock ({transfers.length} total)</p>
         </div>
-        <button className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 transition">
+        <Link
+          to="/transfers/new"
+          className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 transition inline-block"
+        >
           Nueva Transferencia
-        </button>
+        </Link>
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
