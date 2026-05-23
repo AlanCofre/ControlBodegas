@@ -25,55 +25,46 @@ const initialState: TransferState = {
 export function TransferProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(transferReducer, initialState)
 
-  const dispatchAction = (action: TransferAction) => {
-    dispatch(action)
-  }
+  const dispatchAction = (action: TransferAction) => dispatch(action)
 
   const value: TransferContextType = {
     transfers: state.transfers,
     auditLog: state.auditLog,
-    approveTransfer: (transferId: string) => {
+    approveTransfer: (transferId: string) =>
       dispatchAction({
         type: 'APPROVE_TRANSFER',
         payload: { transferId },
-      })
-    },
-    rejectTransfer: (transferId: string, motivo: string) => {
+      }),
+    rejectTransfer: (transferId: string, motivo: string) =>
       dispatchAction({
         type: 'REJECT_TRANSFER',
         payload: { transferId, motivo },
-      })
-    },
-    reserveTransfer: (transferId: string) => {
+      }),
+    reserveTransfer: (transferId: string) =>
       dispatchAction({
         type: 'RESERVE_TRANSFER',
         payload: { transferId },
-      })
-    },
-    dispatchTransfer: (transferId: string) => {
+      }),
+    dispatchTransfer: (transferId: string) =>
       dispatchAction({
         type: 'DISPATCH_TRANSFER',
         payload: { transferId },
-      })
-    },
-    receiveTransfer: (transferId: string, cantidadRecibida: number) => {
+      }),
+    receiveTransfer: (transferId: string, cantidadRecibida: number) =>
       dispatchAction({
         type: 'RECEIVE_TRANSFER',
         payload: { transferId, cantidadRecibida },
-      })
-    },
-    closeTransfer: (transferId: string) => {
+      }),
+    closeTransfer: (transferId: string) =>
       dispatchAction({
         type: 'CLOSE_TRANSFER',
         payload: { transferId },
-      })
-    },
-    errorTransfer: (transferId: string, error: string) => {
+      }),
+    errorTransfer: (transferId: string, error: string) =>
       dispatchAction({
         type: 'ERROR_TRANSFER',
         payload: { transferId, error },
-      })
-    },
+      }),
   }
 
   return <TransferContext.Provider value={value}>{children}</TransferContext.Provider>

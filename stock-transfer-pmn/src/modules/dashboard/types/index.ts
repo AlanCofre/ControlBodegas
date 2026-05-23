@@ -1,13 +1,16 @@
 export interface DashboardStats {
-  totalTransfers: number
+  total: number
   pending: number
+  inTransit: number
   completed: number
+  withDifference: number
   rejected: number
+  errors: number
 }
 
 export interface DashboardCard {
   title: string
   value: number | string
   subtitle: string
-  color: 'blue' | 'yellow' | 'green' | 'red'
+  color: 'gray' | 'yellow' | 'purple' | 'green' | 'orange' | 'red' | 'blue'
 }

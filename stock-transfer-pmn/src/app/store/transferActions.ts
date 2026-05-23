@@ -1,6 +1,11 @@
-import type { Transfer, TransferStatus, AuditEvent } from '../../modules/transferencias/types'
+import type {
+  Transfer,
+  TransferStatus,
+  AuditEvent,
+  UserRole,
+} from '../../modules/transferencias/types'
 
-const generateId = () => Math.random().toString(36).substr(2, 9).toUpperCase()
+const generateId = () => Math.random().toString(36).substring(2, 10).toUpperCase()
 
 export interface TransferAction {
   type:
@@ -22,197 +27,274 @@ export interface TransferState {
 const createAuditEvent = (
   transferencia_id: string,
   actor: string,
+  rol: UserRole,
   accion: string,
   estado_anterior: TransferStatus | undefined,
   estado_nuevo: TransferStatus,
   descripcion: string,
+  datos_adicionales?: Record<string, unknown>,
 ): AuditEvent => ({
   id: generateId(),
   transferencia_id,
   actor,
-  rol: 'sistema',
+  rol,
   accion,
   estado_anterior,
   estado_nuevo,
   descripcion,
   timestamp: new Date().toISOString(),
-  datos_adicionales: {},
+  datos_adicionales: datos_adicionales ?? {},
 })
 
-export const transferReducer = (state: TransferState, action: TransferAction): TransferState => {
+export const transferReducer = (
+  state: TransferState,
+  action: TransferAction,
+): TransferState => {
+  const updateTransfer = (
+    transferId: string,
+    updater: (transfer: Transfer) => { updated: Transfer; event: AuditEvent } | null,
+  ): TransferState => {
+    const transfer = state.transfers.find((t) => t.id === transferId)
+    if (!transfer) return state
+
+    const result = updater(transfer)
+    if (!result) return state
+
+    const { updated, event } = result
+
+    return {
+      transfers: state.transfers.map((t) =>
+        t.id === transferId ? { ...updated, eventos: [...updated.eventos, event] } : t,
+      ),
+      auditLog: [...state.auditLog, event],
+    }
+  }
+
   switch (action.type) {
     case 'APPROVE_TRANSFER': {
       const id = action.payload?.transferId as string
-      const transfer = state.transfers.find((t) => t.id === id)
-      if (!transfer || transfer.estado !== 'CREADA') return state
 
-      const estadoAnterior = transfer.estado
-      transfer.estado = 'APROBADA'
-      transfer.fecha_actualizacion = new Date().toISOString()
+      return updateTransfer(id, (transfer) => {
+        if (transfer.estado !== 'CREADA') return null
 
-      const evento = createAuditEvent(
-        id,
-        'Carlos S.',
-        'aprobar',
-        estadoAnterior,
-        'APROBADA',
-        'Supervisor bodega aprobó la transferencia',
-      )
-      transfer.eventos.push(evento)
-      state.auditLog.push(evento)
+        const estadoAnterior = transfer.estado
+        const updated: Transfer = {
+          ...transfer,
+          estado: 'APROBADA',
+          fecha_actualizacion: new Date().toISOString(),
+        }
 
-      return { ...state }
+        const event = createAuditEvent(
+          id,
+          'Carlos S.',
+          'supervisor_remitente',
+          'aprobar_solicitud',
+          estadoAnterior,
+          'APROBADA',
+          'Supervisor remitente aprobó la transferencia',
+        )
+
+        return { updated, event }
+      })
     }
 
     case 'REJECT_TRANSFER': {
       const id = action.payload?.transferId as string
       const motivo = (action.payload?.motivo as string) || 'No especificado'
-      const transfer = state.transfers.find((t) => t.id === id)
-      if (!transfer) return state
 
-      const estadoAnterior = transfer.estado
-      transfer.estado = 'RECHAZADA'
-      transfer.fecha_actualizacion = new Date().toISOString()
-      transfer.descripcion = `Rechazada: ${motivo}`
+      return updateTransfer(id, (transfer) => {
+        if (transfer.estado !== 'CREADA') return null
 
-      const evento = createAuditEvent(
-        id,
-        'Carlos S.',
-        'rechazar',
-        estadoAnterior,
-        'RECHAZADA',
-        `Transferencia rechazada: ${motivo}`,
-      )
-      transfer.eventos.push(evento)
-      state.auditLog.push(evento)
+        const estadoAnterior = transfer.estado
+        const updated: Transfer = {
+          ...transfer,
+          estado: 'RECHAZADA',
+          fecha_actualizacion: new Date().toISOString(),
+          descripcion: `Rechazada: ${motivo}`,
+        }
 
-      return { ...state }
+        const event = createAuditEvent(
+          id,
+          'Carlos S.',
+          'supervisor_remitente',
+          'rechazar_solicitud',
+          estadoAnterior,
+          'RECHAZADA',
+          `Transferencia rechazada: ${motivo}`,
+          { motivo },
+        )
+
+        return { updated, event }
+      })
     }
 
     case 'RESERVE_TRANSFER': {
       const id = action.payload?.transferId as string
-      const transfer = state.transfers.find((t) => t.id === id)
-      if (!transfer || transfer.estado !== 'APROBADA') return state
 
-      const estadoAnterior = transfer.estado
-      transfer.estado = 'RESERVADA'
-      transfer.fecha_actualizacion = new Date().toISOString()
+      return updateTransfer(id, (transfer) => {
+        if (transfer.estado !== 'APROBADA') return null
 
-      const evento = createAuditEvent(
-        id,
-        'Pedro R.',
-        'reservar',
-        estadoAnterior,
-        'RESERVADA',
-        `${transfer.cantidad} unidades de ${transfer.producto} reservadas en ${transfer.origen}`,
-      )
-      transfer.eventos.push(evento)
-      state.auditLog.push(evento)
+        const estadoAnterior = transfer.estado
+        const updated: Transfer = {
+          ...transfer,
+          estado: 'RESERVADA',
+          fecha_actualizacion: new Date().toISOString(),
+        }
 
-      return { ...state }
+        const event = createAuditEvent(
+          id,
+          'Sistema',
+          'sistema',
+          'reservar_stock',
+          estadoAnterior,
+          'RESERVADA',
+          `${transfer.cantidad} unidades reservadas en ${transfer.origen}`,
+          {
+            producto: transfer.producto,
+            cantidad: transfer.cantidad,
+            origen: transfer.origen,
+          },
+        )
+
+        return { updated, event }
+      })
     }
 
     case 'DISPATCH_TRANSFER': {
       const id = action.payload?.transferId as string
-      const transfer = state.transfers.find((t) => t.id === id)
-      if (!transfer || transfer.estado !== 'RESERVADA') return state
 
-      const estadoAnterior = transfer.estado
-      transfer.estado = 'EN_TRANSITO'
-      transfer.fecha_actualizacion = new Date().toISOString()
+      return updateTransfer(id, (transfer) => {
+        if (transfer.estado !== 'RESERVADA') return null
 
-      const evento = createAuditEvent(
-        id,
-        'Pedro R.',
-        'despachar',
-        estadoAnterior,
-        'EN_TRANSITO',
-        `Transferencia despachada de ${transfer.origen} hacia ${transfer.destino}`,
-      )
-      transfer.eventos.push(evento)
-      state.auditLog.push(evento)
+        const estadoAnterior = transfer.estado
+        const updated: Transfer = {
+          ...transfer,
+          estado: 'EN_TRANSITO',
+          fecha_actualizacion: new Date().toISOString(),
+        }
 
-      return { ...state }
+        const event = createAuditEvent(
+          id,
+          'Pedro R.',
+          'operario_despacho',
+          'registrar_despacho',
+          estadoAnterior,
+          'EN_TRANSITO',
+          `Transferencia despachada de ${transfer.origen} hacia ${transfer.destino}`,
+        )
+
+        return { updated, event }
+      })
     }
 
     case 'RECEIVE_TRANSFER': {
       const id = action.payload?.transferId as string
-      const cantidadRecibida = (action.payload?.cantidadRecibida as number) || 0
-      const transfer = state.transfers.find((t) => t.id === id)
-      if (!transfer || transfer.estado !== 'EN_TRANSITO') return state
+      const cantidadRecibida = Number(action.payload?.cantidadRecibida ?? 0)
 
-      const estadoAnterior = transfer.estado
-      transfer.cantidad_recibida = cantidadRecibida
-      transfer.diferencia = cantidadRecibida - transfer.cantidad
+      return updateTransfer(id, (transfer) => {
+        if (
+          transfer.estado !== 'EN_TRANSITO' &&
+          transfer.estado !== 'EN_TRANSITO_CON_INCIDENTE'
+        ) {
+          return null
+        }
 
-      const tienesDiferencia = transfer.diferencia !== 0
-      transfer.estado = tienesDiferencia ? 'CON_DIFERENCIA' : 'RECIBIDA_SIN_DIFERENCIA'
-      transfer.fecha_actualizacion = new Date().toISOString()
+        const estadoAnterior = transfer.estado
+        const diferencia = cantidadRecibida - transfer.cantidad
+        const tieneDiferencia = diferencia !== 0
+        const estadoNuevo: TransferStatus = tieneDiferencia
+          ? 'CON_DIFERENCIA'
+          : 'RECIBIDA_SIN_DIFERENCIA'
 
-      const descripcion = tienesDiferencia
-        ? `Recibida con diferencia: ${transfer.diferencia > 0 ? '+' : ''}${transfer.diferencia} unidades`
-        : 'Recibida sin diferencia'
+        const updated: Transfer = {
+          ...transfer,
+          cantidad_recibida: cantidadRecibida,
+          diferencia,
+          estado: estadoNuevo,
+          fecha_actualizacion: new Date().toISOString(),
+        }
 
-      const evento = createAuditEvent(
-        id,
-        'Sistema',
-        'recibir',
-        estadoAnterior,
-        transfer.estado,
-        descripcion,
-      )
-      transfer.eventos.push(evento)
-      state.auditLog.push(evento)
+        const descripcion = tieneDiferencia
+          ? `Recepción con diferencia: ${diferencia > 0 ? '+' : ''}${diferencia} unidades`
+          : 'Recepción conforme sin diferencias'
 
-      return { ...state }
+        const event = createAuditEvent(
+          id,
+          'Miguel A.',
+          'operario_recepcion',
+          'registrar_recepcion',
+          estadoAnterior,
+          estadoNuevo,
+          descripcion,
+          {
+            cantidad_esperada: transfer.cantidad,
+            cantidad_recibida: cantidadRecibida,
+            diferencia,
+          },
+        )
+
+        return { updated, event }
+      })
     }
 
     case 'CLOSE_TRANSFER': {
       const id = action.payload?.transferId as string
-      const transfer = state.transfers.find((t) => t.id === id)
-      if (!transfer) return state
 
-      const estadoAnterior = transfer.estado
-      transfer.estado = 'CERRADA'
-      transfer.fecha_actualizacion = new Date().toISOString()
+      return updateTransfer(id, (transfer) => {
+        if (
+          transfer.estado !== 'RECIBIDA_SIN_DIFERENCIA' &&
+          transfer.estado !== 'CON_DIFERENCIA'
+        ) {
+          return null
+        }
 
-      const evento = createAuditEvent(
-        id,
-        'Sistema',
-        'cerrar',
-        estadoAnterior,
-        'CERRADA',
-        'Transferencia cerrada correctamente',
-      )
-      transfer.eventos.push(evento)
-      state.auditLog.push(evento)
+        const estadoAnterior = transfer.estado
+        const updated: Transfer = {
+          ...transfer,
+          estado: 'CERRADA',
+          fecha_actualizacion: new Date().toISOString(),
+        }
 
-      return { ...state }
+        const event = createAuditEvent(
+          id,
+          'Sistema',
+          'sistema',
+          'cerrar_transferencia',
+          estadoAnterior,
+          'CERRADA',
+          'Transferencia cerrada correctamente',
+        )
+
+        return { updated, event }
+      })
     }
 
     case 'ERROR_TRANSFER': {
       const id = action.payload?.transferId as string
       const errorMsg = (action.payload?.error as string) || 'Error desconocido'
-      const transfer = state.transfers.find((t) => t.id === id)
-      if (!transfer) return state
 
-      const estadoAnterior = transfer.estado
-      transfer.estado = 'ERROR_RESERVA'
-      transfer.fecha_actualizacion = new Date().toISOString()
-      transfer.descripcion = `Error: ${errorMsg}`
+      return updateTransfer(id, (transfer) => {
+        const estadoAnterior = transfer.estado
+        const updated: Transfer = {
+          ...transfer,
+          estado: 'ERROR_RESERVA',
+          fecha_actualizacion: new Date().toISOString(),
+          descripcion: `Error: ${errorMsg}`,
+        }
 
-      const evento = createAuditEvent(
-        id,
-        'Sistema',
-        'error',
-        estadoAnterior,
-        'ERROR_RESERVA',
-        errorMsg,
-      )
-      transfer.eventos.push(evento)
-      state.auditLog.push(evento)
+        const event = createAuditEvent(
+          id,
+          'Sistema',
+          'sistema',
+          'error_reserva',
+          estadoAnterior,
+          'ERROR_RESERVA',
+          errorMsg,
+          { error: errorMsg },
+        )
 
-      return { ...state }
+        return { updated, event }
+      })
     }
 
     default:
