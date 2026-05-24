@@ -5,7 +5,8 @@ import type {
   UserRole,
 } from '../../modules/transferencias/types'
 
-const generateId = () => Math.random().toString(36).substring(2, 10).toUpperCase()
+const generateId = () =>
+  Math.random().toString(36).substring(2, 10).toUpperCase()
 
 export interface TransferAction {
   type:
@@ -47,13 +48,27 @@ const createAuditEvent = (
   datos_adicionales: datos_adicionales ?? {},
 })
 
+const canSupervisorEvaluate = (estado: TransferStatus) =>
+  estado === 'CREADA' || estado === 'ESCALADA'
+
+const canReserve = (estado: TransferStatus) =>
+  estado === 'APROBADA' || estado === 'ERROR_RESERVA'
+
+const canReceive = (estado: TransferStatus) =>
+  estado === 'EN_TRANSITO' || estado === 'EN_TRANSITO_CON_INCIDENTE'
+
+const canClose = (estado: TransferStatus) =>
+  estado === 'RECIBIDA_SIN_DIFERENCIA' || estado === 'CON_DIFERENCIA'
+
 export const transferReducer = (
   state: TransferState,
   action: TransferAction,
 ): TransferState => {
   const updateTransfer = (
     transferId: string,
-    updater: (transfer: Transfer) => { updated: Transfer; event: AuditEvent } | null,
+    updater: (
+      transfer: Transfer,
+    ) => { updated: Transfer; event: AuditEvent } | null,
   ): TransferState => {
     const transfer = state.transfers.find((t) => t.id === transferId)
     if (!transfer) return state
@@ -65,7 +80,9 @@ export const transferReducer = (
 
     return {
       transfers: state.transfers.map((t) =>
-        t.id === transferId ? { ...updated, eventos: [...updated.eventos, event] } : t,
+        t.id === transferId
+          ? { ...updated, eventos: [...updated.eventos, event] }
+          : t,
       ),
       auditLog: [...state.auditLog, event],
     }
@@ -77,8 +94,9 @@ export const transferReducer = (
       const cantidad = action.payload?.cantidad as number
       const origen = action.payload?.origen as string
       const destino = action.payload?.destino as string
-      const prioridad = (action.payload?.prioridad as any) || 'normal'
-      const descripcion = (action.payload?.descripcion as string) || ''
+      const prioridad =
+        (action.payload?.prioridad as Transfer['prioridad']) ?? 'normal'
+      const descripcion = (action.payload?.descripcion as string) ?? ''
 
       const newId = `TRF-${String(state.transfers.length + 1).padStart(3, '0')}`
       const timestamp = new Date().toISOString()
@@ -86,10 +104,19 @@ export const transferReducer = (
       const eventoCreacion = createAuditEvent(
         newId,
         'Rodrigo M.',
-        'crear',
+        'supervisor_solicitante',
+        'crear_solicitud',
         undefined,
         'CREADA',
         `Transferencia creada: ${cantidad} unidades de ${producto}`,
+        {
+          producto,
+          cantidad,
+          origen,
+          destino,
+          prioridad,
+          descripcion,
+        },
       )
 
       const newTransfer: Transfer = {
@@ -107,17 +134,17 @@ export const transferReducer = (
         eventos: [eventoCreacion],
       }
 
-      state.transfers.push(newTransfer)
-      state.auditLog.push(eventoCreacion)
-
-      return { ...state }
+      return {
+        transfers: [...state.transfers, newTransfer],
+        auditLog: [...state.auditLog, eventoCreacion],
+      }
     }
 
     case 'APPROVE_TRANSFER': {
       const id = action.payload?.transferId as string
 
       return updateTransfer(id, (transfer) => {
-        if (transfer.estado !== 'CREADA') return null
+        if (!canSupervisorEvaluate(transfer.estado)) return null
 
         const estadoAnterior = transfer.estado
         const updated: Transfer = {
@@ -145,7 +172,7 @@ export const transferReducer = (
       const motivo = (action.payload?.motivo as string) || 'No especificado'
 
       return updateTransfer(id, (transfer) => {
-        if (transfer.estado !== 'CREADA') return null
+        if (!canSupervisorEvaluate(transfer.estado)) return null
 
         const estadoAnterior = transfer.estado
         const updated: Transfer = {
@@ -174,7 +201,7 @@ export const transferReducer = (
       const id = action.payload?.transferId as string
 
       return updateTransfer(id, (transfer) => {
-        if (transfer.estado !== 'APROBADA') return null
+        if (!canReserve(transfer.estado)) return null
 
         const estadoAnterior = transfer.estado
         const updated: Transfer = {
@@ -234,10 +261,9 @@ export const transferReducer = (
       const cantidadRecibida = Number(action.payload?.cantidadRecibida ?? 0)
 
       return updateTransfer(id, (transfer) => {
-        if (
-          transfer.estado !== 'EN_TRANSITO' &&
-          transfer.estado !== 'EN_TRANSITO_CON_INCIDENTE'
-        ) {
+        if (!canReceive(transfer.estado)) return null
+
+        if (Number.isNaN(cantidadRecibida) || cantidadRecibida < 0) {
           return null
         }
 
@@ -283,12 +309,7 @@ export const transferReducer = (
       const id = action.payload?.transferId as string
 
       return updateTransfer(id, (transfer) => {
-        if (
-          transfer.estado !== 'RECIBIDA_SIN_DIFERENCIA' &&
-          transfer.estado !== 'CON_DIFERENCIA'
-        ) {
-          return null
-        }
+        if (!canClose(transfer.estado)) return null
 
         const estadoAnterior = transfer.estado
         const updated: Transfer = {
@@ -316,6 +337,8 @@ export const transferReducer = (
       const errorMsg = (action.payload?.error as string) || 'Error desconocido'
 
       return updateTransfer(id, (transfer) => {
+        if (transfer.estado !== 'APROBADA') return null
+
         const estadoAnterior = transfer.estado
         const updated: Transfer = {
           ...transfer,

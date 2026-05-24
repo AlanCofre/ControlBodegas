@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
+import { useAuth } from '../../../shared/auth/AuthContext'
 import type { TransferStatus } from '../types'
 
 const getStatusColor = (status: TransferStatus) => {
@@ -44,6 +45,7 @@ const getStatusLabel = (status: TransferStatus) => {
 
 export default function TransferListPage() {
   const { transfers } = useTransferStore()
+  const currentRole = useAuth().user?.rol
 
   const sortedTransfers = [...transfers].sort(
     (a, b) =>
@@ -54,6 +56,10 @@ export default function TransferListPage() {
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleString('es-CL')
 
+  const canCreateTransfer =
+    currentRole === 'administrador' ||
+    currentRole === 'supervisor_solicitante'
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -63,12 +69,15 @@ export default function TransferListPage() {
             Listado general del flujo operacional
           </p>
         </div>
-        <Link
-          to="/transfers/new"
-          className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 transition inline-block"
-        >
-          Nueva Transferencia
-        </Link>
+
+        {canCreateTransfer && (
+          <Link
+            to="/transfers/create"
+            className="inline-block rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700"
+          >
+            Nueva Transferencia
+          </Link>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -95,7 +104,7 @@ export default function TransferListPage() {
                   Actualización
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Detalle
+                  Acciones
                 </th>
               </tr>
             </thead>

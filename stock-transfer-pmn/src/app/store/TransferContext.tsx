@@ -1,12 +1,25 @@
 import { createContext, useContext, useReducer, type ReactNode } from 'react'
 import type { Transfer, AuditEvent } from '../../modules/transferencias/types'
-import { transferReducer, type TransferAction, type TransferState } from './transferActions'
+import {
+  transferReducer,
+  type TransferAction,
+  type TransferState,
+} from './transferActions'
 import { initialTransfers } from './initialData'
+
+type TransferPriority = 'baja' | 'normal' | 'alta' | 'urgente'
 
 interface TransferContextType {
   transfers: Transfer[]
   auditLog: AuditEvent[]
-  createTransfer: (producto: string, cantidad: number, origen: string, destino: string, prioridad: string, descripcion?: string) => string
+  createTransfer: (
+    producto: string,
+    cantidad: number,
+    origen: string,
+    destino: string,
+    prioridad: TransferPriority,
+    descripcion?: string,
+  ) => string
   approveTransfer: (transferId: string) => void
   rejectTransfer: (transferId: string, motivo: string) => void
   reserveTransfer: (transferId: string) => void
@@ -26,66 +39,113 @@ const initialState: TransferState = {
 export function TransferProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(transferReducer, initialState)
 
-  const dispatchAction = (action: TransferAction) => dispatch(action)
+  const dispatchAction = (action: TransferAction) => {
+    dispatch(action)
+  }
+
+  const createTransfer = (
+    producto: string,
+    cantidad: number,
+    origen: string,
+    destino: string,
+    prioridad: TransferPriority,
+    descripcion?: string,
+  ): string => {
+    const newId = `TRF-${String(state.transfers.length + 1).padStart(3, '0')}`
+
+    dispatchAction({
+      type: 'CREATE_TRANSFER',
+      payload: {
+        producto,
+        cantidad,
+        origen,
+        destino,
+        prioridad,
+        descripcion,
+      },
+    })
+
+    return newId
+  }
+
+  const approveTransfer = (transferId: string) => {
+    dispatchAction({
+      type: 'APPROVE_TRANSFER',
+      payload: { transferId },
+    })
+  }
+
+  const rejectTransfer = (transferId: string, motivo: string) => {
+    dispatchAction({
+      type: 'REJECT_TRANSFER',
+      payload: { transferId, motivo },
+    })
+  }
+
+  const reserveTransfer = (transferId: string) => {
+    dispatchAction({
+      type: 'RESERVE_TRANSFER',
+      payload: { transferId },
+    })
+  }
+
+  const dispatchTransfer = (transferId: string) => {
+    dispatchAction({
+      type: 'DISPATCH_TRANSFER',
+      payload: { transferId },
+    })
+  }
+
+  const receiveTransfer = (
+    transferId: string,
+    cantidadRecibida: number,
+  ) => {
+    dispatchAction({
+      type: 'RECEIVE_TRANSFER',
+      payload: { transferId, cantidadRecibida },
+    })
+  }
+
+  const closeTransfer = (transferId: string) => {
+    dispatchAction({
+      type: 'CLOSE_TRANSFER',
+      payload: { transferId },
+    })
+  }
+
+  const errorTransfer = (transferId: string, error: string) => {
+    dispatchAction({
+      type: 'ERROR_TRANSFER',
+      payload: { transferId, error },
+    })
+  }
 
   const value: TransferContextType = {
     transfers: state.transfers,
     auditLog: state.auditLog,
-    createTransfer: (producto: string, cantidad: number, origen: string, destino: string, prioridad: string, descripcion?: string) => {
-      const newTransferLength = state.transfers.length + 1
-      const newId = `TRF-${String(newTransferLength).padStart(3, '0')}`
-      
-      dispatchAction({
-        type: 'CREATE_TRANSFER',
-        payload: { producto, cantidad, origen, destino, prioridad, descripcion },
-      })
-      
-      return newId
-    },
-    approveTransfer: (transferId: string) => {
-      dispatchAction({
-        type: 'APPROVE_TRANSFER',
-        payload: { transferId },
-      }),
-    rejectTransfer: (transferId: string, motivo: string) =>
-      dispatchAction({
-        type: 'REJECT_TRANSFER',
-        payload: { transferId, motivo },
-      }),
-    reserveTransfer: (transferId: string) =>
-      dispatchAction({
-        type: 'RESERVE_TRANSFER',
-        payload: { transferId },
-      }),
-    dispatchTransfer: (transferId: string) =>
-      dispatchAction({
-        type: 'DISPATCH_TRANSFER',
-        payload: { transferId },
-      }),
-    receiveTransfer: (transferId: string, cantidadRecibida: number) =>
-      dispatchAction({
-        type: 'RECEIVE_TRANSFER',
-        payload: { transferId, cantidadRecibida },
-      }),
-    closeTransfer: (transferId: string) =>
-      dispatchAction({
-        type: 'CLOSE_TRANSFER',
-        payload: { transferId },
-      }),
-    errorTransfer: (transferId: string, error: string) =>
-      dispatchAction({
-        type: 'ERROR_TRANSFER',
-        payload: { transferId, error },
-      }),
+    createTransfer,
+    approveTransfer,
+    rejectTransfer,
+    reserveTransfer,
+    dispatchTransfer,
+    receiveTransfer,
+    closeTransfer,
+    errorTransfer,
   }
 
-  return <TransferContext.Provider value={value}>{children}</TransferContext.Provider>
+  return (
+    <TransferContext.Provider value={value}>
+      {children}
+    </TransferContext.Provider>
+  )
 }
 
 export function useTransferStore() {
   const context = useContext(TransferContext)
+
   if (!context) {
     throw new Error('useTransferStore must be used within a TransferProvider')
   }
+
   return context
 }

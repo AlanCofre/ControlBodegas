@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
 
@@ -15,13 +15,30 @@ const PRODUCTOS_MOCK = [
   'Adaptador DisplayPort',
 ]
 
-const BODEGAS_MOCK = ['Bodega Centro', 'Bodega Norte', 'Bodega Sur', 'Bodega Este', 'Bodega Oeste']
+const BODEGAS_MOCK = [
+  'Bodega Centro',
+  'Bodega Norte',
+  'Bodega Sur',
+  'Bodega Este',
+  'Bodega Oeste',
+]
+
+type Prioridad = 'baja' | 'normal' | 'alta' | 'urgente'
+
+interface FormData {
+  producto: string
+  cantidad: string
+  prioridad: Prioridad
+  origen: string
+  destino: string
+  descripcion: string
+}
 
 export default function CreateTransferPage() {
   const navigate = useNavigate()
   const { createTransfer } = useTransferStore()
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     producto: '',
     cantidad: '',
     prioridad: 'normal',
@@ -37,23 +54,26 @@ export default function CreateTransferPage() {
     const newErrors: Record<string, string> = {}
 
     if (!formData.producto.trim()) newErrors.producto = 'Producto requerido'
-    if (!formData.cantidad || parseInt(formData.cantidad, 10) <= 0) newErrors.cantidad = 'Cantidad debe ser mayor a 0'
+    if (!formData.cantidad || parseInt(formData.cantidad, 10) <= 0) {
+      newErrors.cantidad = 'Cantidad debe ser mayor a 0'
+    }
     if (!formData.origen) newErrors.origen = 'Bodega origen requerida'
     if (!formData.destino) newErrors.destino = 'Bodega destino requerida'
-    if (formData.origen === formData.destino) newErrors.destino = 'Origen y destino deben ser diferentes'
+    if (formData.origen === formData.destino) {
+      newErrors.destino = 'Origen y destino deben ser diferentes'
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!validateForm()) return
 
     setLoading(true)
 
-    // Simular validación del backend
     await new Promise((resolve) => setTimeout(resolve, 1500))
 
     const newTransferId = createTransfer(
@@ -69,32 +89,45 @@ export default function CreateTransferPage() {
     navigate(`/transfers/${newTransferId}`)
   }
 
-  const handleProductoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleProductoChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setFormData({ ...formData, producto: e.target.value })
     setErrors({ ...errors, producto: '' })
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
-    setErrors({ ...errors, [name]: '' })
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+    setErrors((prev) => ({
+      ...prev,
+      [name]: '',
+    }))
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Nueva Solicitud de Transferencia</h1>
-        <p className="mt-1 text-gray-600">Completa el formulario para crear una transferencia de stock</p>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Nueva Solicitud de Transferencia
+        </h1>
+        <p className="mt-1 text-gray-600">
+          Completa el formulario para crear una transferencia de stock
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Detalles de la Solicitud</h2>
+          <h2 className="mb-6 text-lg font-semibold text-gray-900">
+            Detalles de la Solicitud
+          </h2>
 
           <div className="space-y-5">
-            {/* Producto */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-medium text-gray-700">
                 Producto *
               </label>
               <select
@@ -102,7 +135,9 @@ export default function CreateTransferPage() {
                 value={formData.producto}
                 onChange={handleProductoChange}
                 className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
-                  errors.producto ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                  errors.producto
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                 }`}
               >
                 <option value="">-- Seleccionar producto --</option>
@@ -112,12 +147,13 @@ export default function CreateTransferPage() {
                   </option>
                 ))}
               </select>
-              {errors.producto && <p className="mt-1 text-sm text-red-600">{errors.producto}</p>}
+              {errors.producto && (
+                <p className="mt-1 text-sm text-red-600">{errors.producto}</p>
+              )}
             </div>
 
-            {/* Cantidad */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-medium text-gray-700">
                 Cantidad (unidades) *
               </label>
               <input
@@ -127,16 +163,19 @@ export default function CreateTransferPage() {
                 onChange={handleInputChange}
                 min="1"
                 className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
-                  errors.cantidad ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                  errors.cantidad
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                 }`}
                 placeholder="Ingrese la cantidad"
               />
-              {errors.cantidad && <p className="mt-1 text-sm text-red-600">{errors.cantidad}</p>}
+              {errors.cantidad && (
+                <p className="mt-1 text-sm text-red-600">{errors.cantidad}</p>
+              )}
             </div>
 
-            {/* Prioridad */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-medium text-gray-700">
                 Prioridad
               </label>
               <select
@@ -152,10 +191,9 @@ export default function CreateTransferPage() {
               </select>
             </div>
 
-            {/* Bodegas */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
                   Bodega Origen *
                 </label>
                 <select
@@ -163,7 +201,9 @@ export default function CreateTransferPage() {
                   value={formData.origen}
                   onChange={handleInputChange}
                   className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
-                    errors.origen ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    errors.origen
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                   }`}
                 >
                   <option value="">-- Seleccionar --</option>
@@ -173,11 +213,13 @@ export default function CreateTransferPage() {
                     </option>
                   ))}
                 </select>
-                {errors.origen && <p className="mt-1 text-sm text-red-600">{errors.origen}</p>}
+                {errors.origen && (
+                  <p className="mt-1 text-sm text-red-600">{errors.origen}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
                   Bodega Destino *
                 </label>
                 <select
@@ -185,7 +227,9 @@ export default function CreateTransferPage() {
                   value={formData.destino}
                   onChange={handleInputChange}
                   className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
-                    errors.destino ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    errors.destino
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                   }`}
                 >
                   <option value="">-- Seleccionar --</option>
@@ -195,13 +239,14 @@ export default function CreateTransferPage() {
                     </option>
                   ))}
                 </select>
-                {errors.destino && <p className="mt-1 text-sm text-red-600">{errors.destino}</p>}
+                {errors.destino && (
+                  <p className="mt-1 text-sm text-red-600">{errors.destino}</p>
+                )}
               </div>
             </div>
 
-            {/* Observaciones */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-medium text-gray-700">
                 Observaciones (opcional)
               </label>
               <textarea
@@ -216,24 +261,24 @@ export default function CreateTransferPage() {
           </div>
         </div>
 
-        {/* Botones */}
         <div className="flex gap-3">
           <button
             type="button"
             onClick={() => navigate('/transfers')}
-            className="flex-1 px-4 py-2 rounded-lg border border-gray-300 font-medium text-gray-700 hover:bg-gray-50 transition"
+            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50"
             disabled={loading}
           >
             Cancelar
           </button>
+
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 px-4 py-2 rounded-lg bg-blue-600 font-medium text-white hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? (
               <>
-                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 Creando...
               </>
             ) : (
@@ -242,11 +287,13 @@ export default function CreateTransferPage() {
           </button>
         </div>
 
-        {/* Información */}
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <p className="text-xs font-medium text-blue-700 uppercase">Información</p>
-          <p className="text-sm text-blue-700 mt-2">
-            La solicitud será creada en estado <strong>CREADA</strong> y enviada al supervisor de bodega para evaluación operacional.
+          <p className="text-xs font-medium uppercase text-blue-700">
+            Información
+          </p>
+          <p className="mt-2 text-sm text-blue-700">
+            La solicitud será creada en estado <strong>CREADA</strong> y enviada
+            al supervisor de bodega para evaluación operacional.
           </p>
         </div>
       </form>
