@@ -4,6 +4,7 @@ import MainLayout from '../layouts/MainLayout'
 
 import DashboardPage from '../../modules/dashboard/pages/DashboardPage'
 import TransferListPage from '../../modules/transferencias/pages/TransferListPage'
+import CreateTransferPage from '../../modules/transferencias/pages/CreateTransferPage'
 import TransferDetailPage from '../../modules/transferencias/pages/TransferDetailPage'
 import InventoryPage from '../../modules/inventario/pages/InventoryPage'
 import AuditPage from '../../modules/auditoria/pages/AuditPage'
@@ -25,6 +26,15 @@ export default function AppRoutes() {
         element={
           <MainLayout>
             <TransferListPage />
+          </MainLayout>
+        }
+      />
+
+      <Route
+        path="/transfers/new"
+        element={
+          <MainLayout>
+            <CreateTransferPage />
           </MainLayout>
         }
       />

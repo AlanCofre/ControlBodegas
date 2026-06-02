@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
+import { useAuth } from '../../../shared/auth/AuthContext'
+import StockValidationFlow from '../components/StockValidationFlow'
+import SupervisorEvaluation from '../components/SupervisorEvaluation'
 import type { TransferStatus } from '../types'
 
 const getStatusColor = (status: TransferStatus) => {
@@ -9,15 +12,19 @@ const getStatusColor = (status: TransferStatus) => {
     APROBADA: 'bg-blue-100 text-blue-800 border border-blue-300',
     RESERVADA: 'bg-cyan-100 text-cyan-800 border border-cyan-300',
     EN_TRANSITO: 'bg-purple-100 text-purple-800 border border-purple-300',
-    RECIBIDA_SIN_DIFERENCIA: 'bg-green-100 text-green-800 border border-green-300',
+    EN_TRANSITO_CON_INCIDENTE:
+      'bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-300',
+    RECIBIDA_SIN_DIFERENCIA:
+      'bg-green-100 text-green-800 border border-green-300',
     CON_DIFERENCIA: 'bg-orange-100 text-orange-800 border border-orange-300',
     CERRADA: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
     RECHAZADA: 'bg-red-100 text-red-800 border border-red-300',
-    SIN_ORIGEN: 'bg-red-100 text-red-800 border border-red-300',
+    SIN_ORIGEN_DISPONIBLE: 'bg-rose-100 text-rose-800 border border-rose-300',
     ERROR_RESERVA: 'bg-red-100 text-red-800 border border-red-300',
     ESCALADA: 'bg-amber-100 text-amber-800 border border-amber-300',
   }
-  return colors[status] || 'bg-gray-100 text-gray-800'
+
+  return colors[status]
 }
 
 const getStatusLabel = (status: TransferStatus) => {
@@ -25,45 +32,116 @@ const getStatusLabel = (status: TransferStatus) => {
     CREADA: 'Creada',
     APROBADA: 'Aprobada',
     RESERVADA: 'Reservada',
-    EN_TRANSITO: 'En Tránsito',
+    EN_TRANSITO: 'En tránsito',
+    EN_TRANSITO_CON_INCIDENTE: 'En tránsito con incidente',
     RECIBIDA_SIN_DIFERENCIA: 'Recibida OK',
-    CON_DIFERENCIA: 'Con Diferencia',
+    CON_DIFERENCIA: 'Con diferencia',
     CERRADA: 'Cerrada',
     RECHAZADA: 'Rechazada',
-    SIN_ORIGEN: 'Sin Origen',
-    ERROR_RESERVA: 'Error Reserva',
+    SIN_ORIGEN_DISPONIBLE: 'Sin origen disponible',
+    ERROR_RESERVA: 'Error de reserva',
     ESCALADA: 'Escalada',
   }
+
   return labels[status]
 }
 
-const getActionButtons = (status: TransferStatus) => {
-  const actions: Record<TransferStatus, { label: string; action: string; color: string }[]> = {
-    CREADA: [
-      { label: 'Aprobar', action: 'approve', color: 'bg-green-600 hover:bg-green-700' },
-      { label: 'Rechazar', action: 'reject', color: 'bg-red-600 hover:bg-red-700' },
-    ],
-    APROBADA: [
-      { label: 'Reservar', action: 'reserve', color: 'bg-blue-600 hover:bg-blue-700' },
-      { label: 'Rechazar', action: 'reject', color: 'bg-red-600 hover:bg-red-700' },
-    ],
-    RESERVADA: [{ label: 'Despachar', action: 'dispatch', color: 'bg-purple-600 hover:bg-purple-700' }],
-    EN_TRANSITO: [{ label: 'Recibir', action: 'receive', color: 'bg-cyan-600 hover:bg-cyan-700' }],
-    RECIBIDA_SIN_DIFERENCIA: [{ label: 'Cerrar', action: 'close', color: 'bg-emerald-600 hover:bg-emerald-700' }],
-    CON_DIFERENCIA: [{ label: 'Cerrar', action: 'close', color: 'bg-emerald-600 hover:bg-emerald-700' }],
-    CERRADA: [],
-    RECHAZADA: [],
-    SIN_ORIGEN: [],
-    ERROR_RESERVA: [{ label: 'Reintentar', action: 'reserve', color: 'bg-blue-600 hover:bg-blue-700' }],
-    ESCALADA: [],
+const getActionButtons = (
+  status: TransferStatus,
+  currentRole?: string,
+): { label: string; action: string; color: string }[] => {
+  if (
+    (status === 'CREADA' || status === 'ESCALADA') &&
+    (currentRole === 'administrador' ||
+      currentRole === 'supervisor_remitente')
+  ) {
+    return [
+      {
+        label: 'Aprobar',
+        action: 'approve',
+        color: 'bg-green-600 hover:bg-green-700',
+      },
+      {
+        label: 'Rechazar',
+        action: 'reject',
+        color: 'bg-red-600 hover:bg-red-700',
+      },
+    ]
   }
-  return actions[status] || []
+
+  if (
+    (status === 'APROBADA' || status === 'ERROR_RESERVA') &&
+    (currentRole === 'administrador' ||
+      currentRole === 'supervisor_remitente')
+  ) {
+    return [
+      {
+        label: 'Reservar',
+        action: 'reserve',
+        color: 'bg-blue-600 hover:bg-blue-700',
+      },
+    ]
+  }
+
+  if (
+    status === 'RESERVADA' &&
+    (currentRole === 'administrador' ||
+      currentRole === 'operario_despacho')
+  ) {
+    return [
+      {
+        label: 'Despachar',
+        action: 'dispatch',
+        color: 'bg-purple-600 hover:bg-purple-700',
+      },
+    ]
+  }
+
+  if (
+    (status === 'EN_TRANSITO' || status === 'EN_TRANSITO_CON_INCIDENTE') &&
+    (currentRole === 'administrador' ||
+      currentRole === 'operario_recepcion')
+  ) {
+    return [
+      {
+        label: 'Recibir',
+        action: 'receive',
+        color: 'bg-cyan-600 hover:bg-cyan-700',
+      },
+    ]
+  }
+
+  if (
+    (status === 'RECIBIDA_SIN_DIFERENCIA' || status === 'CON_DIFERENCIA') &&
+    (currentRole === 'administrador' ||
+      currentRole === 'supervisor_solicitante')
+  ) {
+    return [
+      {
+        label: 'Cerrar',
+        action: 'close',
+        color: 'bg-emerald-600 hover:bg-emerald-700',
+      },
+    ]
+  }
+
+  return []
 }
 
 export default function TransferDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { transfers, approveTransfer, rejectTransfer, reserveTransfer, dispatchTransfer, receiveTransfer, closeTransfer } = useTransferStore()
+  const currentRole = useAuth().user?.rol
+  const {
+    transfers,
+    approveTransfer,
+    rejectTransfer,
+    reserveTransfer,
+    dispatchTransfer,
+    receiveTransfer,
+    closeTransfer,
+  } = useTransferStore()
+
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [showReceiveModal, setShowReceiveModal] = useState(false)
@@ -75,10 +153,12 @@ export default function TransferDetailPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Transferencia no encontrada</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Transferencia no encontrada
+          </h1>
           <button
             onClick={() => navigate('/transfers')}
-            className="text-blue-600 hover:text-blue-800 font-medium"
+            className="font-medium text-blue-600 hover:text-blue-800"
           >
             Volver a listado
           </button>
@@ -87,7 +167,7 @@ export default function TransferDetailPage() {
     )
   }
 
-  const actions = getActionButtons(transfer.estado)
+  const actions = getActionButtons(transfer.estado, currentRole)
 
   const handleAction = (action: string) => {
     switch (action) {
@@ -113,19 +193,19 @@ export default function TransferDetailPage() {
   }
 
   const handleRejectConfirm = () => {
-    if (rejectReason.trim()) {
-      rejectTransfer(transfer.id, rejectReason)
-      setShowRejectModal(false)
-      setRejectReason('')
-    }
+    if (!rejectReason.trim()) return
+    rejectTransfer(transfer.id, rejectReason)
+    setShowRejectModal(false)
+    setRejectReason('')
   }
 
   const handleReceiveConfirm = () => {
-    if (quantityReceived) {
-      receiveTransfer(transfer.id, parseInt(quantityReceived, 10))
-      setShowReceiveModal(false)
-      setQuantityReceived('')
-    }
+    const parsed = parseInt(quantityReceived, 10)
+    if (Number.isNaN(parsed) || parsed < 0) return
+
+    receiveTransfer(transfer.id, parsed)
+    setShowReceiveModal(false)
+    setQuantityReceived('')
   }
 
   const formatDate = (dateString: string) => {
@@ -136,65 +216,102 @@ export default function TransferDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Transferencia {transfer.id}</h1>
-          <p className="mt-1 text-gray-600">Gestión operacional del flujo de transferencia</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Transferencia {transfer.id}
+          </h1>
+          <p className="mt-1 text-gray-600">
+            Gestión operacional del flujo de transferencia
+          </p>
         </div>
         <button
           onClick={() => navigate('/transfers')}
-          className="text-blue-600 hover:text-blue-800 font-medium"
+          className="font-medium text-blue-600 hover:text-blue-800"
         >
           ← Volver a listado
         </button>
       </div>
 
-      {/* Estado Actual */}
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Estado Actual</h2>
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">
+            Estado actual
+          </h2>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-600">Estado:</span>
-              <span className={`inline-block rounded-full px-3 py-1 text-sm font-medium ${getStatusColor(transfer.estado)}`}>
+              <span
+                className={`inline-block rounded-full px-3 py-1 text-sm font-medium ${getStatusColor(
+                  transfer.estado,
+                )}`}
+              >
                 {getStatusLabel(transfer.estado)}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">Prioridad:</span>
-              <span className="text-sm font-medium text-gray-900 capitalize">{transfer.prioridad}</span>
+              <span className="text-sm font-medium text-gray-600">
+                Prioridad:
+              </span>
+              <span className="text-sm font-medium capitalize text-gray-900">
+                {transfer.prioridad}
+              </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">Creada por:</span>
-              <span className="text-sm text-gray-900">{transfer.creada_por}</span>
+              <span className="text-sm font-medium text-gray-600">
+                Creada por:
+              </span>
+              <span className="text-sm text-gray-900">
+                {transfer.creada_por}
+              </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">Última actualización:</span>
-              <span className="text-sm text-gray-600">{formatDate(transfer.fecha_actualizacion)}</span>
+              <span className="text-sm font-medium text-gray-600">
+                Última actualización:
+              </span>
+              <span className="text-sm text-gray-600">
+                {formatDate(transfer.fecha_actualizacion)}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Información Operacional */}
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Información Operacional</h2>
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">
+            Información operacional
+          </h2>
           <div className="space-y-4">
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase">Producto</p>
-              <p className="text-sm font-semibold text-gray-900">{transfer.producto}</p>
+              <p className="text-xs font-medium uppercase text-gray-500">
+                Producto
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {transfer.producto}
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase">Cantidad Solicitada</p>
-                <p className="text-lg font-bold text-gray-900">{transfer.cantidad}</p>
+                <p className="text-xs font-medium uppercase text-gray-500">
+                  Cantidad solicitada
+                </p>
+                <p className="text-lg font-bold text-gray-900">
+                  {transfer.cantidad}
+                </p>
               </div>
+
               {transfer.cantidad_recibida !== undefined && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase">Cantidad Recibida</p>
-                  <p className="text-lg font-bold text-gray-900">{transfer.cantidad_recibida}</p>
-                  {transfer.diferencia !== undefined && transfer.diferencia !== 0 && (
-                    <p className={`text-xs mt-1 ${transfer.diferencia > 0 ? 'text-orange-600' : 'text-orange-600'}`}>
-                      Diferencia: {transfer.diferencia > 0 ? '+' : ''}{transfer.diferencia}
-                    </p>
-                  )}
+                  <p className="text-xs font-medium uppercase text-gray-500">
+                    Cantidad recibida
+                  </p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {transfer.cantidad_recibida}
+                  </p>
+                  {transfer.diferencia !== undefined &&
+                    transfer.diferencia !== 0 && (
+                      <p className="mt-1 text-xs text-orange-600">
+                        Diferencia: {transfer.diferencia > 0 ? '+' : ''}
+                        {transfer.diferencia}
+                      </p>
+                    )}
                 </div>
               )}
             </div>
@@ -202,39 +319,59 @@ export default function TransferDetailPage() {
         </div>
       </div>
 
-      {/* Ruta de Transferencia */}
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Ruta de Transferencia</h2>
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          Ruta de transferencia
+        </h2>
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Bodega Origen</p>
-            <p className="text-lg font-semibold text-gray-900">{transfer.origen}</p>
+            <p className="text-xs font-medium uppercase text-gray-500">
+              Bodega origen
+            </p>
+            <p className="text-lg font-semibold text-gray-900">
+              {transfer.origen}
+            </p>
           </div>
           <div className="mx-6 text-2xl text-gray-400">→</div>
           <div className="flex-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Bodega Destino</p>
-            <p className="text-lg font-semibold text-gray-900">{transfer.destino}</p>
+            <p className="text-xs font-medium uppercase text-gray-500">
+              Bodega destino
+            </p>
+            <p className="text-lg font-semibold text-gray-900">
+              {transfer.destino}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Timeline */}
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6">Timeline de Eventos</h2>
+        <h2 className="mb-6 text-lg font-semibold text-gray-900">
+          Timeline de eventos
+        </h2>
         <div className="space-y-4">
           {transfer.eventos.map((evento, index) => (
             <div key={evento.id} className="flex gap-4">
               <div className="flex flex-col items-center">
-                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center border-2 border-blue-300">
-                  <span className="text-xs font-semibold text-blue-600">{index + 1}</span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-blue-300 bg-blue-100">
+                  <span className="text-xs font-semibold text-blue-600">
+                    {index + 1}
+                  </span>
                 </div>
-                {index < transfer.eventos.length - 1 && <div className="w-0.5 h-12 bg-blue-200 mt-2"></div>}
+                {index < transfer.eventos.length - 1 && (
+                  <div className="mt-2 h-12 w-0.5 bg-blue-200"></div>
+                )}
               </div>
+
               <div className="flex-1 pb-4">
-                <p className="text-sm font-semibold text-gray-900">{evento.accion}</p>
-                <p className="text-sm text-gray-600 mt-1">{evento.descripcion}</p>
-                <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                <p className="text-sm font-semibold text-gray-900">
+                  {evento.accion}
+                </p>
+                <p className="mt-1 text-sm text-gray-600">
+                  {evento.descripcion}
+                </p>
+                <div className="mt-2 flex gap-4 text-xs text-gray-500">
                   <span>👤 {evento.actor}</span>
+                  <span>Rol: {evento.rol}</span>
                   <span>⏱️ {formatDate(evento.timestamp)}</span>
                 </div>
               </div>
@@ -243,16 +380,17 @@ export default function TransferDetailPage() {
         </div>
       </div>
 
-      {/* Acciones */}
       {actions.length > 0 && (
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Acciones Disponibles</h2>
-          <div className="flex gap-3 flex-wrap">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">
+            Acciones disponibles
+          </h2>
+          <div className="flex flex-wrap gap-3">
             {actions.map((action) => (
               <button
                 key={action.action}
                 onClick={() => handleAction(action.action)}
-                className={`px-4 py-2 rounded-lg font-medium text-white transition ${action.color}`}
+                className={`rounded-lg px-4 py-2 font-medium text-white transition ${action.color}`}
               >
                 {action.label}
               </button>
@@ -261,16 +399,19 @@ export default function TransferDetailPage() {
         </div>
       )}
 
-      {/* Reject Modal */}
       {showRejectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Rechazar Transferencia</h3>
-            <p className="text-sm text-gray-600 mb-4">Indique el motivo del rechazo:</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-96 rounded-lg bg-white p-6 shadow-lg">
+            <h3 className="mb-4 text-lg font-semibold text-gray-900">
+              Rechazar transferencia
+            </h3>
+            <p className="mb-4 text-sm text-gray-600">
+              Indique el motivo del rechazo:
+            </p>
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mb-4"
+              className="mb-4 w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               rows={4}
               placeholder="Motivo del rechazo..."
             />
@@ -280,34 +421,39 @@ export default function TransferDetailPage() {
                   setShowRejectModal(false)
                   setRejectReason('')
                 }}
-                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 font-medium text-gray-700 hover:bg-gray-50 transition"
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleRejectConfirm}
                 disabled={!rejectReason.trim()}
-                className="flex-1 px-4 py-2 rounded-lg bg-red-600 font-medium text-white hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Confirmar Rechazo
+                Confirmar rechazo
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Receive Modal */}
       {showReceiveModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recibir Transferencia</h3>
-            <p className="text-sm text-gray-600 mb-4">Cantidad solicitada: <strong>{transfer.cantidad}</strong></p>
-            <p className="text-sm text-gray-600 mb-4">Indique la cantidad recibida:</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-96 rounded-lg bg-white p-6 shadow-lg">
+            <h3 className="mb-4 text-lg font-semibold text-gray-900">
+              Recibir transferencia
+            </h3>
+            <p className="mb-4 text-sm text-gray-600">
+              Cantidad solicitada: <strong>{transfer.cantidad}</strong>
+            </p>
+            <p className="mb-4 text-sm text-gray-600">
+              Indique la cantidad recibida:
+            </p>
             <input
               type="number"
               value={quantityReceived}
               onChange={(e) => setQuantityReceived(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mb-4"
+              className="mb-4 w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               min="0"
               placeholder="Cantidad recibida..."
             />
@@ -317,16 +463,16 @@ export default function TransferDetailPage() {
                   setShowReceiveModal(false)
                   setQuantityReceived('')
                 }}
-                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 font-medium text-gray-700 hover:bg-gray-50 transition"
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleReceiveConfirm}
                 disabled={!quantityReceived}
-                className="flex-1 px-4 py-2 rounded-lg bg-cyan-600 font-medium text-white hover:bg-cyan-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 rounded-lg bg-cyan-600 px-4 py-2 font-medium text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Confirmar Recepción
+                Confirmar recepción
               </button>
             </div>
           </div>
