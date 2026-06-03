@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
 import { useAuth } from '../../../shared/auth/AuthContext'
-import StockValidationFlow from '../components/StockValidationFlow'
-import SupervisorEvaluation from '../components/SupervisorEvaluation'
 import type { TransferStatus } from '../types'
 
 const getStatusColor = (status: TransferStatus) => {
@@ -134,6 +132,7 @@ export default function TransferDetailPage() {
   const currentRole = useAuth().user?.rol
   const {
     transfers,
+    loading,
     approveTransfer,
     rejectTransfer,
     reserveTransfer,
@@ -148,6 +147,14 @@ export default function TransferDetailPage() {
   const [quantityReceived, setQuantityReceived] = useState('')
 
   const transfer = transfers.find((t) => t.id === id)
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+      </div>
+    )
+  }
 
   if (!transfer) {
     return (

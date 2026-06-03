@@ -1,4 +1,12 @@
+import { useTransferStore } from '../../../app/store/TransferContext'
+
 export default function AuditPage() {
+  const { auditLog, loading } = useTransferStore()
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('es-CL')
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -28,9 +36,37 @@ export default function AuditPage() {
 
         <div className="mt-6">
           <div className="space-y-4">
-            <div className="border-l-4 border-gray-300 bg-gray-50 p-4">
-              <p className="text-center text-gray-500">No hay registros de auditoría</p>
-            </div>
+            {loading ? (
+              <p className="text-center text-gray-500">Cargando registros...</p>
+            ) : auditLog.length === 0 ? (
+              <div className="border-l-4 border-gray-300 bg-gray-50 p-4">
+                <p className="text-center text-gray-500">No hay registros de auditoría</p>
+              </div>
+            ) : (
+              auditLog.map((event) => (
+                <div key={event.id} className="border-l-4 border-blue-500 bg-gray-50 p-4 transition hover:bg-gray-100">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">{event.accion.toUpperCase()}</p>
+                      <p className="mt-1 text-sm text-gray-700">{event.descripcion}</p>
+                    </div>
+                    <span className="text-xs text-gray-500">{formatDate(event.timestamp)}</span>
+                  </div>
+                  <div className="mt-2 flex gap-4 text-xs text-gray-500">
+                    <span>👤 {event.actor} ({event.rol})</span>
+                    <span>🆔 Ref: {event.transferencia_id}</span>
+                    {event.estado_nuevo && (
+                      <span className="font-medium text-blue-600">→ {event.estado_nuevo}</span>
+                    )}
+                  </div>
+                  {event.datos_adicionales && Object.keys(event.datos_adicionales).length > 0 && (
+                    <div className="mt-2 text-xs text-gray-400 bg-white p-2 rounded border border-gray-100">
+                      <pre>{JSON.stringify(event.datos_adicionales, null, 2)}</pre>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

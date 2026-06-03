@@ -42,7 +42,7 @@ const getStatusLabel = (status: TransferStatus) => {
 }
 
 export default function DashboardPage() {
-  const { transfers } = useTransferStore()
+  const { transfers, loading } = useTransferStore()
 
   const stats = useMemo(() => {
     const total = transfers.length
@@ -110,25 +110,25 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md">
           <p className="text-sm font-medium text-gray-600">Total de transferencias</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900">{stats.total}</p>
+          <p className="mt-2 text-3xl font-bold text-gray-900">{loading ? '...' : stats.total}</p>
           <p className="mt-1 text-xs text-gray-500">Registradas en el sistema</p>
         </div>
 
         <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6 shadow-sm transition hover:shadow-md">
           <p className="text-sm font-medium text-yellow-700">Pendientes</p>
-          <p className="mt-2 text-3xl font-bold text-yellow-600">{stats.pending}</p>
+          <p className="mt-2 text-3xl font-bold text-yellow-600">{loading ? '...' : stats.pending}</p>
           <p className="mt-1 text-xs text-yellow-600">Por revisar o reencaminar</p>
         </div>
 
         <div className="rounded-lg border border-purple-200 bg-purple-50 p-6 shadow-sm transition hover:shadow-md">
           <p className="text-sm font-medium text-purple-700">En proceso</p>
-          <p className="mt-2 text-3xl font-bold text-purple-600">{stats.inTransit}</p>
+          <p className="mt-2 text-3xl font-bold text-purple-600">{loading ? '...' : stats.inTransit}</p>
           <p className="mt-1 text-xs text-purple-600">Reservadas o en tránsito</p>
         </div>
 
         <div className="rounded-lg border border-green-200 bg-green-50 p-6 shadow-sm transition hover:shadow-md">
           <p className="text-sm font-medium text-green-700">Completadas</p>
-          <p className="mt-2 text-3xl font-bold text-green-600">{stats.completed}</p>
+          <p className="mt-2 text-3xl font-bold text-green-600">{loading ? '...' : stats.completed}</p>
           <p className="mt-1 text-xs text-green-600">Recibidas o cerradas</p>
         </div>
       </div>
@@ -198,7 +198,12 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {recentActivity.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+            <p className="mt-4 text-sm text-gray-500">Cargando actividad reciente...</p>
+          </div>
+        ) : recentActivity.length === 0 ? (
           <p className="text-center text-gray-500">No hay actividad registrada</p>
         ) : (
           <div className="space-y-4">

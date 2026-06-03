@@ -9,7 +9,6 @@ interface SupervisorEvaluationProps {
 }
 
 export default function SupervisorEvaluation({
-  transferId,
   estado,
   onApprove,
   onReject,

@@ -44,7 +44,7 @@ const getStatusLabel = (status: TransferStatus) => {
 }
 
 export default function TransferListPage() {
-  const { transfers } = useTransferStore()
+  const { transfers, loading } = useTransferStore()
   const currentRole = useAuth().user?.rol
 
   const sortedTransfers = [...transfers].sort(
@@ -110,7 +110,16 @@ export default function TransferListPage() {
             </thead>
 
             <tbody className="divide-y divide-gray-100 bg-white">
-              {sortedTransfers.map((transfer) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center">
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+                      <span className="text-sm text-gray-500">Cargando transferencias...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : sortedTransfers.map((transfer) => (
                 <tr key={transfer.id} className="hover:bg-gray-50">
                   <td className="px-4 py-4 text-sm font-semibold text-gray-900">
                     {transfer.id}

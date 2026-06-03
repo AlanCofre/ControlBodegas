@@ -1,27 +1,7 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
-
-const PRODUCTOS_MOCK = [
-  'Laptop DELL XPS 13',
-  'Monitor LG 27"',
-  'Teclado Mecánico RGB',
-  'Mouse Logitech MX Master',
-  'Monitor Samsung 32"',
-  'Webcam Logitech HD',
-  'Auriculares Sony WH-1000XM5',
-  'Docking Station USB-C',
-  'Cable HDMI 2.1',
-  'Adaptador DisplayPort',
-]
-
-const BODEGAS_MOCK = [
-  'Bodega Centro',
-  'Bodega Norte',
-  'Bodega Sur',
-  'Bodega Este',
-  'Bodega Oeste',
-]
+import { supabase } from '../../../shared/lib/supabase'
 
 type Prioridad = 'baja' | 'normal' | 'alta' | 'urgente'
 
@@ -47,8 +27,31 @@ export default function CreateTransferPage() {
     descripcion: '',
   })
 
+  const [products, setProducts] = useState<string[]>([])
+  const [warehouses, setWarehouses] = useState<string[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const [fetchingOptions, setFetchingOptions] = useState(true)
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const [productsRes, warehousesRes] = await Promise.all([
+          supabase.from('products').select('name').order('name'),
+          supabase.from('warehouses').select('name').order('name'),
+        ])
+
+        if (productsRes.data) setProducts(productsRes.data.map((p) => p.name))
+        if (warehousesRes.data) setWarehouses(warehousesRes.data.map((w) => w.name))
+      } catch (err) {
+        console.error('Error fetching options:', err)
+      } finally {
+        setFetchingOptions(false)
+      }
+    }
+
+    fetchOptions()
+  }, [])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -74,9 +77,7 @@ export default function CreateTransferPage() {
 
     setLoading(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    const newTransferId = createTransfer(
+    const newTransferId = await createTransfer(
       formData.producto,
       parseInt(formData.cantidad, 10),
       formData.origen,
@@ -86,7 +87,9 @@ export default function CreateTransferPage() {
     )
 
     setLoading(false)
-    navigate(`/transfers/${newTransferId}`)
+    if (newTransferId) {
+      navigate(`/transfers/${newTransferId}`)
+    }
   }
 
   const handleProductoChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -134,14 +137,17 @@ export default function CreateTransferPage() {
                 name="producto"
                 value={formData.producto}
                 onChange={handleProductoChange}
+                disabled={fetchingOptions}
                 className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
                   errors.producto
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                 }`}
               >
-                <option value="">-- Seleccionar producto --</option>
-                {PRODUCTOS_MOCK.map((prod) => (
+                <option value="">
+                  {fetchingOptions ? 'Cargando productos...' : '-- Seleccionar producto --'}
+                </option>
+                {products.map((prod) => (
                   <option key={prod} value={prod}>
                     {prod}
                   </option>
@@ -200,14 +206,17 @@ export default function CreateTransferPage() {
                   name="origen"
                   value={formData.origen}
                   onChange={handleInputChange}
+                  disabled={fetchingOptions}
                   className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
                     errors.origen
                       ? 'border-red-500 focus:ring-red-500'
                       : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                   }`}
                 >
-                  <option value="">-- Seleccionar --</option>
-                  {BODEGAS_MOCK.map((bodega) => (
+                  <option value="">
+                    {fetchingOptions ? 'Cargando...' : '-- Seleccionar --'}
+                  </option>
+                  {warehouses.map((bodega) => (
                     <option key={bodega} value={bodega}>
                       {bodega}
                     </option>
@@ -226,14 +235,17 @@ export default function CreateTransferPage() {
                   name="destino"
                   value={formData.destino}
                   onChange={handleInputChange}
+                  disabled={fetchingOptions}
                   className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
                     errors.destino
                       ? 'border-red-500 focus:ring-red-500'
                       : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                   }`}
                 >
-                  <option value="">-- Seleccionar --</option>
-                  {BODEGAS_MOCK.map((bodega) => (
+                  <option value="">
+                    {fetchingOptions ? 'Cargando...' : '-- Seleccionar --'}
+                  </option>
+                  {warehouses.map((bodega) => (
                     <option key={bodega} value={bodega}>
                       {bodega}
                     </option>
@@ -273,7 +285,7 @@ export default function CreateTransferPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || fetchingOptions}
             className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? (
