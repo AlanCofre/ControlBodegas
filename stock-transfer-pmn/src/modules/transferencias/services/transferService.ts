@@ -1,5 +1,4 @@
 import type { Transfer } from '../types'
-import { initialTransfers } from '../../../app/store/initialData'
 import { supabase } from '../../../lib/supabaseClient'
 
 /**
@@ -7,7 +6,6 @@ import { supabase } from '../../../lib/supabaseClient'
  * Actúa como abstracción entre componentes y fuente de datos
  * 
  * Uso actual: Retorna datos de Supabase
- * Fallback: Retorna mocks si la conexión falla
  */
 export const transferService = {
   /**
@@ -21,10 +19,10 @@ export const transferService = {
         .select('*')
 
       if (error) throw error
-      return data || initialTransfers // Fallback a mocks
+      return data || []
     } catch (error) {
-      console.warn('Error fetching transfers from Supabase:', error)
-      return initialTransfers // Fallback a mocks
+      console.error('Error fetching transfers from Supabase:', error)
+      return []
     }
   },
 
@@ -44,9 +42,8 @@ export const transferService = {
       if (error) throw error
       return data || null
     } catch (error) {
-      console.warn(`Error fetching transfer ${id}:`, error)
-      const transfer = initialTransfers.find((t) => t.id === id)
-      return transfer || null
+      console.error(`Error fetching transfer ${id}:`, error)
+      return null
     }
   },
 
@@ -71,7 +68,7 @@ export const transferService = {
         .single()
 
       if (error) throw error
-      return created || newTransfer
+      return created || (newTransfer as Transfer)
     } catch (error) {
       console.error('Error creating transfer:', error)
       throw error
@@ -121,9 +118,8 @@ export const transferService = {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.warn(`Error fetching transfers by status ${estado}:`, error)
-      const filtered = initialTransfers.filter((t) => t.estado === estado)
-      return filtered
+      console.error(`Error fetching transfers by status ${estado}:`, error)
+      return []
     }
   },
 }

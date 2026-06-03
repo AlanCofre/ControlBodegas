@@ -3,7 +3,6 @@
  * Abstrae la obtención de datos de bodegas
  * 
  * Uso actual: Retorna datos de Supabase
- * Fallback: Retorna mocks si la conexión falla
  */
 
 import { supabase } from '../../../lib/supabaseClient'
@@ -15,44 +14,6 @@ export interface Warehouse {
   capacidad: number
   stock_actual: number
 }
-
-const BODEGAS_MOCK: Warehouse[] = [
-  {
-    id: 'BOD-001',
-    nombre: 'Bodega Centro',
-    ubicacion: 'Centro',
-    capacidad: 1000,
-    stock_actual: 450,
-  },
-  {
-    id: 'BOD-002',
-    nombre: 'Bodega Norte',
-    ubicacion: 'Norte',
-    capacidad: 800,
-    stock_actual: 320,
-  },
-  {
-    id: 'BOD-003',
-    nombre: 'Bodega Sur',
-    ubicacion: 'Sur',
-    capacidad: 900,
-    stock_actual: 650,
-  },
-  {
-    id: 'BOD-004',
-    nombre: 'Bodega Este',
-    ubicacion: 'Este',
-    capacidad: 750,
-    stock_actual: 280,
-  },
-  {
-    id: 'BOD-005',
-    nombre: 'Bodega Oeste',
-    ubicacion: 'Oeste',
-    capacidad: 600,
-    stock_actual: 500,
-  },
-]
 
 export const warehouseService = {
   /**
@@ -66,10 +27,10 @@ export const warehouseService = {
         .select('*')
 
       if (error) throw error
-      return data || BODEGAS_MOCK
+      return data || []
     } catch (error) {
-      console.warn('Error fetching warehouses from Supabase:', error)
-      return BODEGAS_MOCK
+      console.error('Error fetching warehouses from Supabase:', error)
+      return []
     }
   },
 
@@ -89,9 +50,8 @@ export const warehouseService = {
       if (error) throw error
       return data || null
     } catch (error) {
-      console.warn(`Error fetching warehouse ${id}:`, error)
-      const warehouse = BODEGAS_MOCK.find((w) => w.id === id)
-      return warehouse || null
+      console.error(`Error fetching warehouse ${id}:`, error)
+      return null
     }
   },
 
@@ -110,11 +70,8 @@ export const warehouseService = {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.warn(`Error fetching warehouses by name ${nombre}:`, error)
-      const filtered = BODEGAS_MOCK.filter((w) =>
-        w.nombre.toLowerCase().includes(nombre.toLowerCase()),
-      )
-      return filtered
+      console.error(`Error fetching warehouses by name ${nombre}:`, error)
+      return []
     }
   },
 
@@ -131,9 +88,8 @@ export const warehouseService = {
       if (error) throw error
       return data?.map((w: any) => w.nombre) || []
     } catch (error) {
-      console.warn('Error fetching warehouse names:', error)
-      const names = BODEGAS_MOCK.map((w) => w.nombre)
-      return names
+      console.error('Error fetching warehouse names:', error)
+      return []
     }
   },
 

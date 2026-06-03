@@ -1,9 +1,10 @@
+import { supabase } from '../../../lib/supabaseClient'
+
 /**
  * Servicio de productos
  * Abstrae la obtención de datos de productos
  * 
- * Uso actual: Retorna mocks locales
- * Uso futuro: Retornará datos desde Supabase
+ * Uso actual: Retorna datos de Supabase
  */
 
 export interface Product {
@@ -14,87 +15,23 @@ export interface Product {
   precio: number
 }
 
-const PRODUCTOS_MOCK: Product[] = [
-  {
-    id: 'PROD-001',
-    nombre: 'Laptop DELL XPS 13',
-    categoria: 'Computadoras',
-    codigo: 'DELL-XPS-13',
-    precio: 1500,
-  },
-  {
-    id: 'PROD-002',
-    nombre: 'Monitor LG 27"',
-    categoria: 'Monitores',
-    codigo: 'LG-27',
-    precio: 350,
-  },
-  {
-    id: 'PROD-003',
-    nombre: 'Teclado Mecánico RGB',
-    categoria: 'Periféricos',
-    codigo: 'KBD-RGB',
-    precio: 150,
-  },
-  {
-    id: 'PROD-004',
-    nombre: 'Mouse Logitech MX Master',
-    categoria: 'Periféricos',
-    codigo: 'LOG-MXM',
-    precio: 100,
-  },
-  {
-    id: 'PROD-005',
-    nombre: 'Monitor Samsung 32"',
-    categoria: 'Monitores',
-    codigo: 'SAM-32',
-    precio: 400,
-  },
-  {
-    id: 'PROD-006',
-    nombre: 'Webcam Logitech HD',
-    categoria: 'Periféricos',
-    codigo: 'LOG-WBC',
-    precio: 75,
-  },
-  {
-    id: 'PROD-007',
-    nombre: 'Auriculares Sony WH-1000XM5',
-    categoria: 'Audio',
-    codigo: 'SONY-XM5',
-    precio: 380,
-  },
-  {
-    id: 'PROD-008',
-    nombre: 'Docking Station USB-C',
-    categoria: 'Accesorios',
-    codigo: 'DOCK-USB',
-    precio: 120,
-  },
-  {
-    id: 'PROD-009',
-    nombre: 'Cable HDMI 2.1',
-    categoria: 'Cables',
-    codigo: 'HDMI-2.1',
-    precio: 25,
-  },
-  {
-    id: 'PROD-010',
-    nombre: 'Adaptador DisplayPort',
-    categoria: 'Adaptadores',
-    codigo: 'DP-ADAPT',
-    precio: 50,
-  },
-]
-
 export const productService = {
   /**
    * Obtiene todos los productos
    * @returns Promise con array de productos
    */
   async getAll(): Promise<Product[]> {
-    // TODO: Reemplazar con: return supabase.from('products').select('*')
-    return Promise.resolve(PRODUCTOS_MOCK)
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching all products:', error)
+      return []
+    }
   },
 
   /**
@@ -103,9 +40,19 @@ export const productService = {
    * @returns Promise con el producto encontrado
    */
   async getById(id: string): Promise<Product | null> {
-    // TODO: Reemplazar con: return supabase.from('products').select('*').eq('id', id).single()
-    const product = PRODUCTOS_MOCK.find((p) => p.id === id)
-    return Promise.resolve(product || null)
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (error) throw error
+      return data || null
+    } catch (error) {
+      console.error(`Error fetching product ${id}:`, error)
+      return null
+    }
   },
 
   /**
@@ -113,9 +60,17 @@ export const productService = {
    * @returns Promise con array de nombres
    */
   async getNames(): Promise<string[]> {
-    // TODO: Reemplazar con: return supabase.from('products').select('nombre')
-    const names = PRODUCTOS_MOCK.map((p) => p.nombre)
-    return Promise.resolve(names)
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('nombre')
+
+      if (error) throw error
+      return data?.map((p) => p.nombre) || []
+    } catch (error) {
+      console.error('Error fetching product names:', error)
+      return []
+    }
   },
 
   /**
@@ -124,11 +79,18 @@ export const productService = {
    * @returns Promise con array de productos encontrados
    */
   async searchByName(nombre: string): Promise<Product[]> {
-    // TODO: Reemplazar con: return supabase.from('products').select('*').ilike('nombre', `%${nombre}%`)
-    const filtered = PRODUCTOS_MOCK.filter((p) =>
-      p.nombre.toLowerCase().includes(nombre.toLowerCase()),
-    )
-    return Promise.resolve(filtered)
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .ilike('nombre', `%${nombre}%`)
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error(`Error searching products by name ${nombre}:`, error)
+      return []
+    }
   },
 
   /**
@@ -137,9 +99,18 @@ export const productService = {
    * @returns Promise con array de productos
    */
   async getByCategory(categoria: string): Promise<Product[]> {
-    // TODO: Reemplazar con: return supabase.from('products').select('*').eq('categoria', categoria)
-    const filtered = PRODUCTOS_MOCK.filter((p) => p.categoria === categoria)
-    return Promise.resolve(filtered)
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('categoria', categoria)
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error(`Error fetching products by category ${categoria}:`, error)
+      return []
+    }
   },
 
   /**
@@ -147,8 +118,19 @@ export const productService = {
    * @returns Promise con array de categorías
    */
   async getCategories(): Promise<string[]> {
-    // TODO: Reemplazar con: return supabase.from('products').select('categoria').distinct()
-    const categories = Array.from(new Set(PRODUCTOS_MOCK.map((p) => p.categoria)))
-    return Promise.resolve(categories)
+    try {
+      // Supabase no tiene .distinct(), usamos select y luego procesamos o una query raw si es necesario
+      // Para este PMN, seleccionamos todas las categorías y filtramos duplicados en JS
+      const { data, error } = await supabase
+        .from('products')
+        .select('categoria')
+
+      if (error) throw error
+      const categories = Array.from(new Set(data?.map((p) => p.categoria)))
+      return categories
+    } catch (error) {
+      console.error('Error fetching product categories:', error)
+      return []
+    }
   },
 }

@@ -6,7 +6,6 @@ import { supabase } from '../../lib/supabaseClient'
  * Abstrae la obtención de roles de usuario
  * 
  * Uso actual: Retorna datos de Supabase
- * Fallback: Retorna mocks si la conexión falla
  */
 
 export interface RoleOption {
@@ -14,29 +13,6 @@ export interface RoleOption {
   label: string
   descripcion?: string
 }
-
-const ROLES_MOCK: RoleOption[] = [
-  {
-    value: 'administrador',
-    label: 'Administrador',
-    descripcion: 'Acceso total al sistema',
-  },
-  {
-    value: 'supervisor',
-    label: 'Supervisor',
-    descripcion: 'Gestiona y aprueba transferencias',
-  },
-  {
-    value: 'operador',
-    label: 'Operador',
-    descripcion: 'Registra entrada y salida de inventario',
-  },
-  {
-    value: 'transportista',
-    label: 'Transportista',
-    descripcion: 'Gestiona transporte de mercancía',
-  },
-]
 
 export const authService = {
   /**
@@ -50,10 +26,10 @@ export const authService = {
         .select('*')
 
       if (error) throw error
-      return data || ROLES_MOCK
+      return data || []
     } catch (error) {
-      console.warn('Error fetching roles from Supabase:', error)
-      return ROLES_MOCK
+      console.error('Error fetching roles from Supabase:', error)
+      return []
     }
   },
 
@@ -73,9 +49,8 @@ export const authService = {
       if (error) throw error
       return data || null
     } catch (error) {
-      console.warn(`Error fetching role ${value}:`, error)
-      const role = ROLES_MOCK.find((r) => r.value === value)
-      return role || null
+      console.error(`Error fetching role ${value}:`, error)
+      return null
     }
   },
 
@@ -94,16 +69,9 @@ export const authService = {
       if (!roleExists) return false
 
       // Aquí puedes agregar validación adicional contra Supabase
-      // const { data, error } = await supabase
-      //   .from('users')
-      //   .select('*')
-      //   .eq('nombre', nombre)
-      //   .eq('rol', rol)
-      //   .single()
-
       return true
     } catch (error) {
-      console.warn('Error validating credentials:', error)
+      console.error('Error validating credentials:', error)
       return false
     }
   },
