@@ -20,7 +20,7 @@ export async function testSupabaseConnection() {
   try {
     // 1. Probar conexión básica
     console.log('📡 1. Probando conexión básica a Supabase...')
-    const { data: tableData, error: tableError } = await supabase
+    const { error: tableError } = await supabase
       .from('transfers')
       .select('count')
       .limit(1)
@@ -101,8 +101,8 @@ export async function testCreateTransfer() {
     console.log('✅ Transferencia creada:', newTransfer.id)
     return newTransfer
   } catch (error) {
-    console.warn(
-      '⚠️  No se pudo crear en Supabase (usando mocks fallback)',
+    console.error(
+      '⚠️  No se pudo crear en Supabase',
       error,
     )
     return null

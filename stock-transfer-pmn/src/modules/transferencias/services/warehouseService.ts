@@ -86,7 +86,7 @@ export const warehouseService = {
         .select('nombre')
 
       if (error) throw error
-      return data?.map((w: any) => w.nombre) || []
+      return data?.map((w) => w.nombre) || []
     } catch (error) {
       console.error('Error fetching warehouse names:', error)
       return []
