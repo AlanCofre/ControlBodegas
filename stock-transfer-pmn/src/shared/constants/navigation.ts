@@ -4,51 +4,51 @@ export const NAVIGATION_ITEMS: NavLinkItem[] = [
   {
     name: 'Alertas',
     path: '/alertas',
-    allowedRoles: ['supervisor_solicitante'],
+    allowedRoles: ['supervisor', 'administrador'],
   },
   {
     name: 'Inventario',
     path: '/inventario',
-    allowedRoles: ['supervisor_solicitante'],
+    allowedRoles: ['supervisor', 'operador', 'transportista', 'administrador'],
   },
   {
     name: 'Nueva solicitud',
     path: '/solicitudes/nueva',
-    allowedRoles: ['supervisor_solicitante'],
+    allowedRoles: ['supervisor', 'administrador'],
   },
   {
     name: 'Elegir origen',
     path: '/solicitudes/origen',
-    allowedRoles: ['supervisor_solicitante'],
+    allowedRoles: ['supervisor', 'administrador'],
   },
   {
     name: 'Solicitudes por evaluar',
     path: '/evaluacion',
-    allowedRoles: ['supervisor_remitente'],
+    allowedRoles: ['supervisor', 'administrador'],
   },
   {
     name: 'Validar discrepancias',
     path: '/discrepancias',
-    allowedRoles: ['supervisor_remitente'],
+    allowedRoles: ['supervisor', 'administrador'],
   },
   {
     name: 'Despacho',
     path: '/despacho',
-    allowedRoles: ['operario_remitente'],
+    allowedRoles: ['operador', 'transportista', 'administrador'],
   },
   {
     name: 'Recepción',
     path: '/recepcion',
-    allowedRoles: ['operario_destino'],
+    allowedRoles: ['operador', 'administrador'],
   },
   {
     name: 'Configuración',
     path: '/configuracion',
-    allowedRoles: ['administrador_sistema'],
+    allowedRoles: ['administrador'],
   },
   {
     name: 'Escalaciones',
     path: '/escalaciones',
-    allowedRoles: ['supervisor_superior'],
+    allowedRoles: ['administrador'],
   },
 ]

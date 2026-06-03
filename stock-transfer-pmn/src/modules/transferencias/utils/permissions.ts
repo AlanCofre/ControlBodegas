@@ -78,7 +78,7 @@ export function getAvailableActions(
   }
 
   switch (currentRole) {
-    case 'supervisor_solicitante':
+    case 'supervisor':
       actions.push({ key: 'view', label: 'Ver detalle', variant: 'secondary' })
 
       if (transfer.status === 'creada') {
@@ -112,7 +112,7 @@ export function getAvailableActions(
       }
       break
 
-    case 'supervisor_remitente':
+    case 'supervisor':
       actions.push({ key: 'view', label: 'Ver detalle', variant: 'secondary' })
 
       if (transfer.status === 'creada' || transfer.status === 'escalada') {
@@ -121,7 +121,7 @@ export function getAvailableActions(
       }
       break
 
-    case 'operario_despacho':
+    case 'operador':
       actions.push({ key: 'view', label: 'Ver detalle', variant: 'secondary' })
 
       if (transfer.status === 'reservada') {
@@ -138,7 +138,7 @@ export function getAvailableActions(
       }
       break
 
-    case 'operario_recepcion':
+    case 'operador':
       actions.push({ key: 'view', label: 'Ver detalle', variant: 'secondary' })
 
       if (

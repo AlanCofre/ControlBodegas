@@ -53,7 +53,7 @@ const getActionButtons = (
   if (
     (status === 'CREADA' || status === 'ESCALADA') &&
     (currentRole === 'administrador' ||
-      currentRole === 'supervisor_remitente')
+      currentRole === 'supervisor')
   ) {
     return [
       {
@@ -72,7 +72,7 @@ const getActionButtons = (
   if (
     (status === 'APROBADA' || status === 'ERROR_RESERVA') &&
     (currentRole === 'administrador' ||
-      currentRole === 'supervisor_remitente')
+      currentRole === 'supervisor')
   ) {
     return [
       {
@@ -86,7 +86,7 @@ const getActionButtons = (
   if (
     status === 'RESERVADA' &&
     (currentRole === 'administrador' ||
-      currentRole === 'operario_despacho')
+      currentRole === 'operador')
   ) {
     return [
       {
@@ -100,7 +100,7 @@ const getActionButtons = (
   if (
     (status === 'EN_TRANSITO' || status === 'EN_TRANSITO_CON_INCIDENTE') &&
     (currentRole === 'administrador' ||
-      currentRole === 'operario_recepcion')
+      currentRole === 'operador')
   ) {
     return [
       {
@@ -114,7 +114,7 @@ const getActionButtons = (
   if (
     (status === 'RECIBIDA_SIN_DIFERENCIA' || status === 'CON_DIFERENCIA') &&
     (currentRole === 'administrador' ||
-      currentRole === 'supervisor_solicitante')
+      currentRole === 'supervisor')
   ) {
     return [
       {

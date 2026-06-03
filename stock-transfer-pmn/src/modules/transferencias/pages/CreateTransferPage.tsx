@@ -1,27 +1,7 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
-
-const PRODUCTOS_MOCK = [
-  'Laptop DELL XPS 13',
-  'Monitor LG 27"',
-  'Teclado Mecánico RGB',
-  'Mouse Logitech MX Master',
-  'Monitor Samsung 32"',
-  'Webcam Logitech HD',
-  'Auriculares Sony WH-1000XM5',
-  'Docking Station USB-C',
-  'Cable HDMI 2.1',
-  'Adaptador DisplayPort',
-]
-
-const BODEGAS_MOCK = [
-  'Bodega Centro',
-  'Bodega Norte',
-  'Bodega Sur',
-  'Bodega Este',
-  'Bodega Oeste',
-]
+import { productService, warehouseService } from '../services'
 
 type Prioridad = 'baja' | 'normal' | 'alta' | 'urgente'
 
@@ -49,6 +29,29 @@ export default function CreateTransferPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const [productos, setProductos] = useState<string[]>([])
+  const [bodegas, setBodegas] = useState<string[]>([])
+  const [loadingData, setLoadingData] = useState(true)
+
+  // Cargar datos de servicios al montar el componente
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [productosData, bodegasData] = await Promise.all([
+          productService.getNames(),
+          warehouseService.getNames(),
+        ])
+        setProductos(productosData)
+        setBodegas(bodegasData)
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setLoadingData(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -134,14 +137,15 @@ export default function CreateTransferPage() {
                 name="producto"
                 value={formData.producto}
                 onChange={handleProductoChange}
+                disabled={loadingData}
                 className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
                   errors.producto
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                 }`}
               >
-                <option value="">-- Seleccionar producto --</option>
-                {PRODUCTOS_MOCK.map((prod) => (
+                <option value="">{loadingData ? 'Cargando...' : '-- Seleccionar producto --'}</option>
+                {productos.map((prod) => (
                   <option key={prod} value={prod}>
                     {prod}
                   </option>
@@ -200,6 +204,7 @@ export default function CreateTransferPage() {
                   name="origen"
                   value={formData.origen}
                   onChange={handleInputChange}
+                  disabled={loadingData}
                   className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
                     errors.origen
                       ? 'border-red-500 focus:ring-red-500'
@@ -207,7 +212,7 @@ export default function CreateTransferPage() {
                   }`}
                 >
                   <option value="">-- Seleccionar --</option>
-                  {BODEGAS_MOCK.map((bodega) => (
+                  {bodegas.map((bodega) => (
                     <option key={bodega} value={bodega}>
                       {bodega}
                     </option>
@@ -226,6 +231,7 @@ export default function CreateTransferPage() {
                   name="destino"
                   value={formData.destino}
                   onChange={handleInputChange}
+                  disabled={loadingData}
                   className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
                     errors.destino
                       ? 'border-red-500 focus:ring-red-500'
@@ -233,7 +239,7 @@ export default function CreateTransferPage() {
                   }`}
                 >
                   <option value="">-- Seleccionar --</option>
-                  {BODEGAS_MOCK.map((bodega) => (
+                  {bodegas.map((bodega) => (
                     <option key={bodega} value={bodega}>
                       {bodega}
                     </option>

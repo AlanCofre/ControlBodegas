@@ -58,7 +58,7 @@ export default function TransferListPage() {
 
   const canCreateTransfer =
     currentRole === 'administrador' ||
-    currentRole === 'supervisor_solicitante'
+    currentRole === 'supervisor'
 
   return (
     <div className="space-y-6">
