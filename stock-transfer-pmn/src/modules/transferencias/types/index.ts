@@ -8,6 +8,7 @@ export type TransferStatus =
   | 'CON_DIFERENCIA'
   | 'CERRADA'
   | 'RECHAZADA'
+  | 'SIN_ORIGEN'
   | 'SIN_ORIGEN_DISPONIBLE'
   | 'ERROR_RESERVA'
   | 'ESCALADA'

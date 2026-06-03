@@ -4,15 +4,17 @@ import { supabase } from '../../../lib/supabaseClient'
  * Servicio de productos
  * Abstrae la obtención de datos de productos
  * 
- * Uso actual: Retorna datos de Supabase
+ * Sincronizado con tabla: productos (id, sku, nombre, descripcion, stock_minimo, activo, created_at)
  */
 
 export interface Product {
   id: string
   nombre: string
-  categoria: string
-  codigo: string
-  precio: number
+  categoria?: string // En el nuevo schema no hay categoría explícita, se mantiene por compatibilidad
+  sku: string
+  descripcion?: string
+  stock_minimo: number
+  activo: boolean
 }
 
 export const productService = {
@@ -23,8 +25,9 @@ export const productService = {
   async getAll(): Promise<Product[]> {
     try {
       const { data, error } = await supabase
-        .from('products')
+        .from('productos')
         .select('*')
+        .eq('activo', true)
 
       if (error) throw error
       return data || []
@@ -39,10 +42,10 @@ export const productService = {
    * @param id ID del producto
    * @returns Promise con el producto encontrado
    */
-  async getById(id: string): Promise<Product | null> {
+  async getById(id: string | number): Promise<Product | null> {
     try {
       const { data, error } = await supabase
-        .from('products')
+        .from('productos')
         .select('*')
         .eq('id', id)
         .single()
@@ -62,8 +65,9 @@ export const productService = {
   async getNames(): Promise<string[]> {
     try {
       const { data, error } = await supabase
-        .from('products')
+        .from('productos')
         .select('nombre')
+        .eq('activo', true)
 
       if (error) throw error
       return data?.map((p) => p.nombre) || []
@@ -81,8 +85,9 @@ export const productService = {
   async searchByName(nombre: string): Promise<Product[]> {
     try {
       const { data, error } = await supabase
-        .from('products')
+        .from('productos')
         .select('*')
+        .eq('activo', true)
         .ilike('nombre', `%${nombre}%`)
 
       if (error) throw error
@@ -94,43 +99,12 @@ export const productService = {
   },
 
   /**
-   * Obtiene productos por categoría
-   * @param categoria Nombre de la categoría
-   * @returns Promise con array de productos
-   */
-  async getByCategory(categoria: string): Promise<Product[]> {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('categoria', categoria)
-
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error(`Error fetching products by category ${categoria}:`, error)
-      return []
-    }
-  },
-
-  /**
    * Obtiene todas las categorías disponibles
    * @returns Promise con array de categorías
    */
   async getCategories(): Promise<string[]> {
-    try {
-      // Supabase no tiene .distinct(), usamos select y luego procesamos o una query raw si es necesario
-      // Para este PMN, seleccionamos todas las categorías y filtramos duplicados en JS
-      const { data, error } = await supabase
-        .from('products')
-        .select('categoria')
-
-      if (error) throw error
-      const categories = Array.from(new Set(data?.map((p) => p.categoria)))
-      return categories
-    } catch (error) {
-      console.error('Error fetching product categories:', error)
-      return []
-    }
+    // El nuevo esquema no tiene columna categoría.
+    // Podríamos retornar un array vacío o una categoría por defecto si es necesario para el UI.
+    return []
   },
 }

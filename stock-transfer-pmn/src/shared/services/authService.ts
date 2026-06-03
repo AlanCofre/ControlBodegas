@@ -1,17 +1,15 @@
-import type { UserRole } from '../auth/AuthContext'
 import { supabase } from '../../lib/supabaseClient'
 
 /**
  * Servicio de autenticación
- * Abstrae la obtención de roles de usuario
- * 
- * Uso actual: Retorna datos de Supabase
+ * Sincronizado con tablas: roles y usuarios
  */
 
 export interface RoleOption {
-  value: UserRole
-  label: string
-  descripcion?: string
+  id: number | string
+  nombre: string
+  label?: string // Para compatibilidad UI
+  value?: string // Para compatibilidad UI
 }
 
 export const authService = {
@@ -26,7 +24,12 @@ export const authService = {
         .select('*')
 
       if (error) throw error
-      return data || []
+
+      return (data || []).map(r => ({
+        ...r,
+        label: r.nombre,
+        value: r.nombre.toLowerCase()
+      }))
     } catch (error) {
       console.error('Error fetching roles from Supabase:', error)
       return []
@@ -34,45 +37,69 @@ export const authService = {
   },
 
   /**
-   * Obtiene un rol específico por valor
-   * @param value Valor del rol
+   * Obtiene un rol específico por ID o nombre
+   * @param identifier ID o Nombre del rol
    * @returns Promise con el rol encontrado
    */
-  async getRoleByValue(value: UserRole): Promise<RoleOption | null> {
+  async getRole(identifier: string | number): Promise<RoleOption | null> {
     try {
-      const { data, error } = await supabase
-        .from('roles')
-        .select('*')
-        .eq('value', value)
-        .single()
+      const query = typeof identifier === 'number'
+        ? supabase.from('roles').select('*').eq('id', identifier).single()
+        : supabase.from('roles').select('*').eq('nombre', identifier).single()
+
+      const { data, error } = await query
 
       if (error) throw error
-      return data || null
+      return data ? { ...data, label: data.nombre, value: data.nombre.toLowerCase() } : null
     } catch (error) {
-      console.error(`Error fetching role ${value}:`, error)
+      console.error(`Error fetching role ${identifier}:`, error)
       return null
     }
   },
 
   /**
-   * Valida credenciales de usuario
-   * @param nombre Nombre del usuario
-   * @param rol Rol del usuario
+   * Valida credenciales de usuario contra la tabla usuarios
+   * @param email Email del usuario
+   * @param rolNombre Nombre del rol
    * @returns Promise con booleano indicando si es válido
    */
-  async validateCredentials(nombre: string, rol: UserRole): Promise<boolean> {
+  async validateCredentials(email: string, rolNombre: string): Promise<boolean> {
     try {
-      if (!nombre.trim()) return false
+      if (!email.trim()) return false
 
-      // Validar que el rol existe
-      const roleExists = await this.getRoleByValue(rol)
-      if (!roleExists) return false
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*, roles!inner(nombre)')
+        .eq('email', email)
+        .eq('roles.nombre', rolNombre)
+        .eq('activo', true)
+        .single()
 
-      // Aquí puedes agregar validación adicional contra Supabase
+      if (error || !data) return false
+
       return true
     } catch (error) {
       console.error('Error validating credentials:', error)
       return false
     }
   },
+
+  /**
+   * Obtiene un usuario por email
+   */
+  async getUserByEmail(email: string) {
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*, roles(nombre)')
+        .eq('email', email)
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error(`Error fetching user ${email}:`, error)
+      return null
+    }
+  }
 }

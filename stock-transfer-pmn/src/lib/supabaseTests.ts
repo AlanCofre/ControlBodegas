@@ -21,12 +21,12 @@ export async function testSupabaseConnection() {
     // 1. Probar conexión básica
     console.log('📡 1. Probando conexión básica a Supabase...')
     const { error: tableError } = await supabase
-      .from('transfers')
+      .from('transferencias')
       .select('count')
       .limit(1)
 
     if (tableError) {
-      console.warn('⚠️  Tabla transfers no existe aún (es normal si es primera vez)')
+      console.warn('⚠️  Tabla transferencias no existe aún (es normal si es primera vez)')
       console.log('   Error:', tableError.message)
     } else {
       console.log('✅ Conexión exitosa a Supabase')
