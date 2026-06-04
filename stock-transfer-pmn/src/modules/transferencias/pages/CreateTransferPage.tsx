@@ -1,27 +1,7 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
-
-const PRODUCTOS_MOCK = [
-  'Laptop DELL XPS 13',
-  'Monitor LG 27"',
-  'Teclado Mecánico RGB',
-  'Mouse Logitech MX Master',
-  'Monitor Samsung 32"',
-  'Webcam Logitech HD',
-  'Auriculares Sony WH-1000XM5',
-  'Docking Station USB-C',
-  'Cable HDMI 2.1',
-  'Adaptador DisplayPort',
-]
-
-const BODEGAS_MOCK = [
-  'Bodega Centro',
-  'Bodega Norte',
-  'Bodega Sur',
-  'Bodega Este',
-  'Bodega Oeste',
-]
+import { supabase } from '../../../shared/utils/supabaseClient'
 
 type Prioridad = 'baja' | 'normal' | 'alta' | 'urgente'
 
@@ -38,6 +18,9 @@ export default function CreateTransferPage() {
   const navigate = useNavigate()
   const { createTransfer } = useTransferStore()
 
+  const [productos, setProductos] = useState<string[]>([])
+  const [bodegas, setBodegas] = useState<string[]>([])
+
   const [formData, setFormData] = useState<FormData>({
     producto: '',
     cantidad: '',
@@ -49,6 +32,39 @@ export default function CreateTransferPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const [fetchingData, setFetchingData] = useState(true)
+
+  // Cargar bodegas y productos reales desde la base de datos de Supabase
+  useEffect(() => {
+    const loadDbResources = async () => {
+      try {
+        setFetchingData(true)
+        const { data: prodData, error: prodErr } = await supabase
+          .from('productos')
+          .select('nombre')
+          .eq('activo', true)
+          .order('nombre', { ascending: true })
+
+        if (prodErr) throw prodErr
+        if (prodData) setProductos(prodData.map((p) => p.nombre))
+
+        const { data: bodegaData, error: bodegaErr } = await supabase
+          .from('bodegas')
+          .select('nombre')
+          .eq('activa', true)
+          .order('nombre', { ascending: true })
+
+        if (bodegaErr) throw bodegaErr
+        if (bodegaData) setBodegas(bodegaData.map((b) => b.nombre))
+      } catch (err) {
+        console.error('Error al cargar recursos de base de datos:', err)
+      } finally {
+        setFetchingData(false)
+      }
+    }
+
+    loadDbResources()
+  }, [])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -59,7 +75,7 @@ export default function CreateTransferPage() {
     }
     if (!formData.origen) newErrors.origen = 'Bodega origen requerida'
     if (!formData.destino) newErrors.destino = 'Bodega destino requerida'
-    if (formData.origen === formData.destino) {
+    if (formData.origen && formData.destino && formData.origen === formData.destino) {
       newErrors.destino = 'Origen y destino deben ser diferentes'
     }
 
@@ -74,19 +90,26 @@ export default function CreateTransferPage() {
 
     setLoading(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      const newTransferId = await createTransfer(
+        formData.producto,
+        parseInt(formData.cantidad, 10),
+        formData.origen,
+        formData.destino,
+        formData.prioridad,
+        formData.descripcion,
+      )
 
-    const newTransferId = createTransfer(
-      formData.producto,
-      parseInt(formData.cantidad, 10),
-      formData.origen,
-      formData.destino,
-      formData.prioridad,
-      formData.descripcion,
-    )
-
-    setLoading(false)
-    navigate(`/transfers/${newTransferId}`)
+      setLoading(false)
+      navigate(`/transfers/${newTransferId}`)
+    } catch (err) {
+      console.error('Error al crear la transferencia:', err)
+      setErrors((prev) => ({
+        ...prev,
+        submit: 'Error al comunicarse con la base de datos de Supabase.',
+      }))
+      setLoading(false)
+    }
   }
 
   const handleProductoChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -119,184 +142,199 @@ export default function CreateTransferPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-6 text-lg font-semibold text-gray-900">
-            Detalles de la Solicitud
-          </h2>
+      {errors.submit && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          {errors.submit}
+        </div>
+      )}
 
-          <div className="space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Producto *
-              </label>
-              <select
-                name="producto"
-                value={formData.producto}
-                onChange={handleProductoChange}
-                className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
-                  errors.producto
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                }`}
-              >
-                <option value="">-- Seleccionar producto --</option>
-                {PRODUCTOS_MOCK.map((prod) => (
-                  <option key={prod} value={prod}>
-                    {prod}
-                  </option>
-                ))}
-              </select>
-              {errors.producto && (
-                <p className="mt-1 text-sm text-red-600">{errors.producto}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Cantidad (unidades) *
-              </label>
-              <input
-                type="number"
-                name="cantidad"
-                value={formData.cantidad}
-                onChange={handleInputChange}
-                min="1"
-                className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
-                  errors.cantidad
-                    ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                }`}
-                placeholder="Ingrese la cantidad"
-              />
-              {errors.cantidad && (
-                <p className="mt-1 text-sm text-red-600">{errors.cantidad}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Prioridad
-              </label>
-              <select
-                name="prioridad"
-                value={formData.prioridad}
-                onChange={handleInputChange}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="baja">Baja</option>
-                <option value="normal">Normal</option>
-                <option value="alta">Alta</option>
-                <option value="urgente">Urgente</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Bodega Origen *
-                </label>
-                <select
-                  name="origen"
-                  value={formData.origen}
-                  onChange={handleInputChange}
-                  className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
-                    errors.origen
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                  }`}
-                >
-                  <option value="">-- Seleccionar --</option>
-                  {BODEGAS_MOCK.map((bodega) => (
-                    <option key={bodega} value={bodega}>
-                      {bodega}
-                    </option>
-                  ))}
-                </select>
-                {errors.origen && (
-                  <p className="mt-1 text-sm text-red-600">{errors.origen}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Bodega Destino *
-                </label>
-                <select
-                  name="destino"
-                  value={formData.destino}
-                  onChange={handleInputChange}
-                  className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
-                    errors.destino
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                  }`}
-                >
-                  <option value="">-- Seleccionar --</option>
-                  {BODEGAS_MOCK.map((bodega) => (
-                    <option key={bodega} value={bodega}>
-                      {bodega}
-                    </option>
-                  ))}
-                </select>
-                {errors.destino && (
-                  <p className="mt-1 text-sm text-red-600">{errors.destino}</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                Observaciones (opcional)
-              </label>
-              <textarea
-                name="descripcion"
-                value={formData.descripcion}
-                onChange={handleInputChange}
-                rows={3}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                placeholder="Agregue notas o comentarios relevantes..."
-              />
-            </div>
+      {fetchingData ? (
+        <div className="flex h-48 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+            <p className="text-sm font-medium text-gray-500">Cargando recursos de la base de datos...</p>
           </div>
         </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-6 text-lg font-semibold text-gray-900">
+              Detalles de la Solicitud
+            </h2>
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/transfers')}
-            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50"
-            disabled={loading}
-          >
-            Cancelar
-          </button>
+            <div className="space-y-5">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Producto *
+                </label>
+                <select
+                  name="producto"
+                  value={formData.producto}
+                  onChange={handleProductoChange}
+                  className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
+                    errors.producto
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                  }`}
+                >
+                  <option value="">-- Seleccionar producto --</option>
+                  {productos.map((prod) => (
+                    <option key={prod} value={prod}>
+                      {prod}
+                    </option>
+                  ))}
+                </select>
+                {errors.producto && (
+                  <p className="mt-1 text-sm text-red-600">{errors.producto}</p>
+                )}
+              </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? (
-              <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Creando...
-              </>
-            ) : (
-              'Crear Solicitud'
-            )}
-          </button>
-        </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Cantidad (unidades) *
+                </label>
+                <input
+                  type="number"
+                  name="cantidad"
+                  value={formData.cantidad}
+                  onChange={handleInputChange}
+                  min="1"
+                  className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
+                    errors.cantidad
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                  }`}
+                  placeholder="Ingrese la cantidad"
+                />
+                {errors.cantidad && (
+                  <p className="mt-1 text-sm text-red-600">{errors.cantidad}</p>
+                )}
+              </div>
 
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <p className="text-xs font-medium uppercase text-blue-700">
-            Información
-          </p>
-          <p className="mt-2 text-sm text-blue-700">
-            La solicitud será creada en estado <strong>CREADA</strong> y enviada
-            al supervisor de bodega para evaluación operacional.
-          </p>
-        </div>
-      </form>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Prioridad
+                </label>
+                <select
+                  name="prioridad"
+                  value={formData.prioridad}
+                  onChange={handleInputChange}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="baja">Baja</option>
+                  <option value="normal">Normal</option>
+                  <option value="alta">Alta</option>
+                  <option value="urgente">Urgente</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Bodega Origen *
+                  </label>
+                  <select
+                    name="origen"
+                    value={formData.origen}
+                    onChange={handleInputChange}
+                    className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
+                      errors.origen
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    }`}
+                  >
+                    <option value="">-- Seleccionar --</option>
+                    {bodegas.map((bodega) => (
+                      <option key={bodega} value={bodega}>
+                        {bodega}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.origen && (
+                    <p className="mt-1 text-sm text-red-600">{errors.origen}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Bodega Destino *
+                  </label>
+                  <select
+                    name="destino"
+                    value={formData.destino}
+                    onChange={handleInputChange}
+                    className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
+                      errors.destino
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    }`}
+                  >
+                    <option value="">-- Seleccionar --</option>
+                    {bodegas.map((bodega) => (
+                      <option key={bodega} value={bodega}>
+                        {bodega}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.destino && (
+                    <p className="mt-1 text-sm text-red-600">{errors.destino}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Observaciones (opcional)
+                </label>
+                <textarea
+                  name="descripcion"
+                  value={formData.descripcion}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="Agregue notas o comentarios relevantes..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/transfers')}
+              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50"
+              disabled={loading}
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Creando...
+                </>
+              ) : (
+                'Crear Solicitud'
+              )}
+            </button>
+          </div>
+
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <p className="text-xs font-medium uppercase text-blue-700">
+              Información
+            </p>
+            <p className="mt-2 text-sm text-blue-700">
+              La solicitud será creada en estado <strong>CREADA</strong> y enviada
+              al supervisor de bodega para evaluación operacional.
+            </p>
+          </div>
+        </form>
+      )}
     </div>
   )
 }

@@ -44,6 +44,18 @@ const menuItems: MenuItem[] = [
     exact: true,
   },
   {
+    label: 'Inventario',
+    to: '/inventory',
+    roles: [
+      'administrador',
+      'supervisor_solicitante',
+      'supervisor_remitente',
+      'operario_despacho',
+      'operario_recepcion',
+    ],
+    exact: true,
+  },
+  {
     label: 'Auditoría',
     to: '/audit',
     roles: ['administrador'],
