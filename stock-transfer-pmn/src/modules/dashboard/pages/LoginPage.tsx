@@ -16,10 +16,9 @@ export default function LoginPage() {
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
       administrador: 'Administrador',
-      supervisor_solicitante: 'Supervisor Solicitante',
-      supervisor_remitente: 'Supervisor Remitente',
-      operario_despacho: 'Operario de Despacho',
-      operario_recepcion: 'Operario de Recepción'
+      supervisor_bodega: 'Supervisor de Bodega',
+      operador_bodega: 'Operador de Bodega',
+      transportista: 'Transportista'
     }
     return labels[role] || role
   }

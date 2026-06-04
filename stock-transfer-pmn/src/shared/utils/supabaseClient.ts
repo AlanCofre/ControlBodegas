@@ -22,10 +22,9 @@ export async function seedDatabaseIfNeeded() {
       console.log('Seeding roles...')
       const { error } = await supabase.from('roles').insert([
         { nombre: 'administrador' },
-        { nombre: 'supervisor_solicitante' },
-        { nombre: 'supervisor_remitente' },
-        { nombre: 'operario_despacho' },
-        { nombre: 'operario_recepcion' }
+        { nombre: 'supervisor_bodega' },
+        { nombre: 'operador_bodega' },
+        { nombre: 'transportista' }
       ])
       if (error) console.error('Error seeding roles:', error)
     }
@@ -124,10 +123,11 @@ export async function seedDatabaseIfNeeded() {
         }
 
         const userInserts = [
-          { nombre: 'Rodrigo M.', email: 'rodrigo@controlbodegas.com', rol_id: getRoleId('supervisor_solicitante'), activo: true },
-          { nombre: 'Carlos S.', email: 'carlos@controlbodegas.com', rol_id: getRoleId('supervisor_remitente'), activo: true },
-          { nombre: 'Pedro R.', email: 'pedro@controlbodegas.com', rol_id: getRoleId('operario_despacho'), activo: true },
-          { nombre: 'Miguel A.', email: 'miguel@controlbodegas.com', rol_id: getRoleId('operario_recepcion'), activo: true },
+          { nombre: 'Rodrigo M.', email: 'rodrigo@controlbodegas.com', rol_id: getRoleId('supervisor_bodega'), activo: true },
+          { nombre: 'Carlos S.', email: 'carlos@controlbodegas.com', rol_id: getRoleId('supervisor_bodega'), activo: true },
+          { nombre: 'Pedro R.', email: 'pedro@controlbodegas.com', rol_id: getRoleId('operador_bodega'), activo: true },
+          { nombre: 'Miguel A.', email: 'miguel@controlbodegas.com', rol_id: getRoleId('operador_bodega'), activo: true },
+          { nombre: 'Juan T.', email: 'juan@controlbodegas.com', rol_id: getRoleId('transportista'), activo: true },
           { nombre: 'Admin Control', email: 'admin@controlbodegas.com', rol_id: getRoleId('administrador'), activo: true }
         ].filter(u => u.rol_id !== null)
 

@@ -3,10 +3,9 @@ import { supabase, seedDatabaseIfNeeded } from '../utils/supabaseClient'
 
 export type UserRole =
   | 'administrador'
-  | 'supervisor_solicitante'
-  | 'supervisor_remitente'
-  | 'operario_despacho'
-  | 'operario_recepcion'
+  | 'supervisor_bodega'
+  | 'operador_bodega'
+  | 'transportista'
 
 export interface DbUser {
   id: number
@@ -34,15 +33,14 @@ interface AuthContextType {
 
 // Normaliza los nombres de roles de la base de datos a los tipos del frontend
 export function normalizeRole(dbRoleName: string): UserRole {
-  if (!dbRoleName) return 'operario_despacho'
+  if (!dbRoleName) return 'operador_bodega'
   
   const normalized = dbRoleName.toLowerCase().replace(/[\s_-]+/g, '_').trim()
   
   if (normalized.includes('admin')) return 'administrador'
-  if (normalized.includes('solicitante')) return 'supervisor_solicitante'
-  if (normalized.includes('remitente')) return 'supervisor_remitente'
-  if (normalized.includes('despacho')) return 'operario_despacho'
-  if (normalized.includes('recep')) return 'operario_recepcion'
+  if (normalized.includes('supervisor')) return 'supervisor_bodega'
+  if (normalized.includes('operador') || normalized.includes('operario')) return 'operador_bodega'
+  if (normalized.includes('transp')) return 'transportista'
   
   return normalized as UserRole
 }

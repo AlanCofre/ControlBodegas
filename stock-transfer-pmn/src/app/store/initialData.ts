@@ -57,7 +57,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0441',
         'Rodrigo',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'crear_solicitud',
         'CREADA',
         'Solicitud creada para reponer stock crítico en Bodega Sur',
@@ -66,7 +66,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0441',
         'Rodrigo',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'seleccionar_origen',
         'CREADA',
         'Se selecciona Bodega Norte como bodega de origen',
@@ -91,7 +91,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0441',
         'Carlos',
-        'supervisor_remitente',
+        'supervisor_bodega',
         'aprobar_solicitud',
         'APROBADA',
         'Solicitud aprobada por supervisor remitente',
@@ -115,7 +115,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0441',
         'Pedro',
-        'operario_despacho',
+        'operador_bodega',
         'registrar_despacho',
         'EN_TRANSITO',
         'Despacho registrado con 5 unidades',
@@ -125,7 +125,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0441',
         'Miguel',
-        'operario_recepcion',
+        'operador_bodega',
         'registrar_recepcion',
         'RECIBIDA_SIN_DIFERENCIA',
         'Recepción conforme sin diferencias',
@@ -156,7 +156,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0442',
         'Rodrigo',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'crear_solicitud',
         'CREADA',
         'Solicitud creada por necesidad operativa',
@@ -175,7 +175,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0442',
         'Patricia',
-        'supervisor_remitente',
+        'supervisor_bodega',
         'aprobar_solicitud',
         'APROBADA',
         'Solicitud aprobada por supervisor remitente',
@@ -195,7 +195,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0442',
         'Pedro',
-        'operario_despacho',
+        'operador_bodega',
         'registrar_despacho',
         'EN_TRANSITO',
         'Despacho registrado con 8 unidades',
@@ -205,7 +205,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0442',
         'Miguel',
-        'operario_recepcion',
+        'operador_bodega',
         'registrar_recepcion',
         'CON_DIFERENCIA',
         'Recepción con faltante de 2 unidades',
@@ -220,7 +220,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0442',
         'Rodrigo',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'registrar_diferencia',
         'CON_DIFERENCIA',
         'Supervisor solicitante confirma diferencia de cantidad',
@@ -245,7 +245,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0443',
         'Camila',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'crear_solicitud',
         'CREADA',
         'Solicitud creada para reposición programada',
@@ -264,7 +264,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0443',
         'Carlos',
-        'supervisor_remitente',
+        'supervisor_bodega',
         'aprobar_solicitud',
         'APROBADA',
         'Solicitud aprobada y pendiente de reserva',
@@ -289,7 +289,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0444',
         'Rodrigo',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'crear_solicitud',
         'CREADA',
         'Solicitud creada',
@@ -298,7 +298,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0444',
         'Patricia',
-        'supervisor_remitente',
+        'supervisor_bodega',
         'aprobar_solicitud',
         'APROBADA',
         'Solicitud aprobada por supervisor remitente',
@@ -333,7 +333,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0445',
         'Valentina',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'crear_solicitud',
         'CREADA',
         'Solicitud creada con prioridad urgente',
@@ -342,7 +342,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0445',
         'Carlos',
-        'supervisor_remitente',
+        'supervisor_bodega',
         'aprobar_solicitud',
         'APROBADA',
         'Solicitud aprobada por supervisor remitente',
@@ -381,7 +381,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0446',
         'Rodrigo',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'crear_solicitud',
         'CREADA',
         'Solicitud creada',
@@ -390,7 +390,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0446',
         'Carlos',
-        'supervisor_remitente',
+        'supervisor_bodega',
         'rechazar_solicitud',
         'RECHAZADA',
         'Solicitud rechazada con justificación por demanda interna crítica',
@@ -419,7 +419,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0447',
         'Rodrigo',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'crear_solicitud',
         'CREADA',
         'Solicitud creada para evaluar alternativas de origen',
@@ -428,7 +428,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0447',
         'Rodrigo',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'seleccionar_origen',
         'CREADA',
         'Se intenta inicialmente con Bodega Norte',
@@ -448,7 +448,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0447',
         'Rodrigo',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'reintentar_seleccion_origen',
         'CREADA',
         'Se reintenta con Bodega Centro',
@@ -483,7 +483,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0448',
         'Camila',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'crear_solicitud',
         'CREADA',
         'Solicitud creada con prioridad urgente',
@@ -517,7 +517,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0449',
         'Rodrigo',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'crear_solicitud',
         'CREADA',
         'Solicitud creada',
@@ -526,7 +526,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0449',
         'Carlos',
-        'supervisor_remitente',
+        'supervisor_bodega',
         'aprobar_solicitud',
         'APROBADA',
         'Solicitud aprobada',
@@ -546,7 +546,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0449',
         'Pedro',
-        'operario_despacho',
+        'operador_bodega',
         'registrar_despacho',
         'EN_TRANSITO',
         'Despacho registrado y transferencia en tránsito',
@@ -573,7 +573,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0450',
         'Camila',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'crear_solicitud',
         'CREADA',
         'Solicitud creada',
@@ -582,7 +582,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0450',
         'Patricia',
-        'supervisor_remitente',
+        'supervisor_bodega',
         'aprobar_solicitud',
         'APROBADA',
         'Solicitud aprobada por supervisor remitente',
@@ -602,7 +602,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0450',
         'Pedro',
-        'operario_despacho',
+        'operador_bodega',
         'registrar_despacho',
         'EN_TRANSITO',
         'Despacho confirmado',
@@ -612,7 +612,7 @@ export const initialTransfers: Transfer[] = [
       generateAuditEvent(
         'TRF-2025-0450',
         'Miguel',
-        'operario_recepcion',
+        'operador_bodega',
         'registrar_recepcion',
         'RECIBIDA_SIN_DIFERENCIA',
         'Recepción sin diferencias',

@@ -1,29 +1,39 @@
 import type { AppAction, TransferStatusValue, UserRole } from '../types'
 
 export const ROLE_PERMISSIONS: Record<UserRole, AppAction[]> = {
-  administrador_sistema: [
-    'configurar_parametros',
-  ],
-  supervisor_solicitante: [
+  administrador: [
     'ver_alertas',
     'consultar_inventario',
     'crear_solicitud',
     'seleccionar_bodega_origen',
-    'cerrar_transferencia',
-  ],
-  supervisor_remitente: [
     'aprobar_solicitud',
     'rechazar_solicitud',
     'validar_discrepancia',
-  ],
-  operario_remitente: [
     'registrar_despacho',
+    'registrar_recepcion',
+    'cerrar_transferencia',
+    'configurar_parametros',
+    'resolver_escalacion',
   ],
-  operario_destino: [
+  supervisor_bodega: [
+    'ver_alertas',
+    'consultar_inventario',
+    'crear_solicitud',
+    'seleccionar_bodega_origen',
+    'aprobar_solicitud',
+    'rechazar_solicitud',
+    'validar_discrepancia',
+    'cerrar_transferencia',
+    'resolver_escalacion',
+  ],
+  operador_bodega: [
+    'consultar_inventario',
+    'registrar_despacho',
     'registrar_recepcion',
   ],
-  supervisor_superior: [
-    'resolver_escalacion',
+  transportista: [
+    'ver_alertas',
+    'registrar_despacho',
   ],
 }
 

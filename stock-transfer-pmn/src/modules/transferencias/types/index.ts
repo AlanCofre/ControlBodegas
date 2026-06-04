@@ -13,10 +13,10 @@ export type TransferStatus =
   | 'ESCALADA'
 
 export type UserRole =
-  | 'supervisor_solicitante'
-  | 'supervisor_remitente'
-  | 'operario_despacho'
-  | 'operario_recepcion'
+  | 'administrador'
+  | 'supervisor_bodega'
+  | 'operador_bodega'
+  | 'transportista'
   | 'sistema'
 
 export type Priority = 'baja' | 'normal' | 'alta' | 'urgente'

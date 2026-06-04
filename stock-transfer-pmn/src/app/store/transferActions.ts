@@ -104,7 +104,7 @@ export const transferReducer = (
       const eventoCreacion = createAuditEvent(
         newId,
         'Rodrigo M.',
-        'supervisor_solicitante',
+        'supervisor_bodega',
         'crear_solicitud',
         undefined,
         'CREADA',
@@ -156,7 +156,7 @@ export const transferReducer = (
         const event = createAuditEvent(
           id,
           'Carlos S.',
-          'supervisor_remitente',
+          'supervisor_bodega',
           'aprobar_solicitud',
           estadoAnterior,
           'APROBADA',
@@ -185,7 +185,7 @@ export const transferReducer = (
         const event = createAuditEvent(
           id,
           'Carlos S.',
-          'supervisor_remitente',
+          'supervisor_bodega',
           'rechazar_solicitud',
           estadoAnterior,
           'RECHAZADA',
@@ -245,7 +245,7 @@ export const transferReducer = (
         const event = createAuditEvent(
           id,
           'Pedro R.',
-          'operario_despacho',
+          'operador_bodega',
           'registrar_despacho',
           estadoAnterior,
           'EN_TRANSITO',
@@ -289,7 +289,7 @@ export const transferReducer = (
         const event = createAuditEvent(
           id,
           'Miguel A.',
-          'operario_recepcion',
+          'operador_bodega',
           'registrar_recepcion',
           estadoAnterior,
           estadoNuevo,

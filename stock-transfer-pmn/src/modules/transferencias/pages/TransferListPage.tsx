@@ -58,7 +58,7 @@ export default function TransferListPage() {
 
   const canCreateTransfer =
     currentRole === 'administrador' ||
-    currentRole === 'supervisor_solicitante'
+    currentRole === 'supervisor_bodega'
 
   if (loading) {
     return (

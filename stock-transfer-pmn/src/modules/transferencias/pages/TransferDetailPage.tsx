@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
 import { useAuth } from '../../../shared/auth/AuthContext'
-import StockValidationFlow from '../components/StockValidationFlow'
-import SupervisorEvaluation from '../components/SupervisorEvaluation'
 import type { TransferStatus } from '../types'
 
 const getStatusColor = (status: TransferStatus) => {
@@ -53,7 +51,7 @@ const getActionButtons = (
   if (
     (status === 'CREADA' || status === 'ESCALADA') &&
     (currentRole === 'administrador' ||
-      currentRole === 'supervisor_remitente')
+      currentRole === 'supervisor_bodega')
   ) {
     return [
       {
@@ -72,7 +70,7 @@ const getActionButtons = (
   if (
     (status === 'APROBADA' || status === 'ERROR_RESERVA') &&
     (currentRole === 'administrador' ||
-      currentRole === 'supervisor_remitente')
+      currentRole === 'supervisor_bodega')
   ) {
     return [
       {
@@ -86,7 +84,8 @@ const getActionButtons = (
   if (
     status === 'RESERVADA' &&
     (currentRole === 'administrador' ||
-      currentRole === 'operario_despacho')
+      currentRole === 'operador_bodega' ||
+      currentRole === 'transportista')
   ) {
     return [
       {
@@ -100,7 +99,7 @@ const getActionButtons = (
   if (
     (status === 'EN_TRANSITO' || status === 'EN_TRANSITO_CON_INCIDENTE') &&
     (currentRole === 'administrador' ||
-      currentRole === 'operario_recepcion')
+      currentRole === 'operador_bodega')
   ) {
     return [
       {
@@ -114,7 +113,7 @@ const getActionButtons = (
   if (
     (status === 'RECIBIDA_SIN_DIFERENCIA' || status === 'CON_DIFERENCIA') &&
     (currentRole === 'administrador' ||
-      currentRole === 'supervisor_solicitante')
+      currentRole === 'supervisor_bodega')
   ) {
     return [
       {
