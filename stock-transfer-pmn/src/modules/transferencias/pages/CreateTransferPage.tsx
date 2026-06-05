@@ -1,6 +1,7 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
+import { useAuth } from '../../../shared/auth/AuthContext'
 import { supabase } from '../../../shared/utils/supabaseClient'
 
 type Prioridad = 'baja' | 'normal' | 'alta' | 'urgente'
@@ -17,6 +18,7 @@ interface FormData {
 export default function CreateTransferPage() {
   const navigate = useNavigate()
   const { createTransfer } = useTransferStore()
+  const { user } = useAuth()
 
   const [productos, setProductos] = useState<string[]>([])
   const [bodegas, setBodegas] = useState<string[]>([])
@@ -50,12 +52,21 @@ export default function CreateTransferPage() {
 
         const { data: bodegaData, error: bodegaErr } = await supabase
           .from('bodegas')
-          .select('nombre')
+          .select('id, nombre')
           .eq('activa', true)
           .order('nombre', { ascending: true })
 
         if (bodegaErr) throw bodegaErr
-        if (bodegaData) setBodegas(bodegaData.map((b) => b.nombre))
+        if (bodegaData) {
+          setBodegas(bodegaData.map((b) => b.nombre))
+          
+          if (user && user.rol === 'supervisor_bodega' && user.bodegaId) {
+            const userBodega = bodegaData.find((b: any) => Number(b.id) === Number(user.bodegaId))
+            if (userBodega) {
+              setFormData((prev) => ({ ...prev, destino: userBodega.nombre }))
+            }
+          }
+        }
       } catch (err) {
         console.error('Error al cargar recursos de base de datos:', err)
       } finally {
@@ -64,7 +75,7 @@ export default function CreateTransferPage() {
     }
 
     loadDbResources()
-  }, [])
+  }, [user])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -263,8 +274,11 @@ export default function CreateTransferPage() {
                     name="destino"
                     value={formData.destino}
                     onChange={handleInputChange}
+                    disabled={user?.rol === 'supervisor_bodega'}
                     className={`w-full rounded border px-3 py-2 text-sm outline-none transition ${
-                      errors.destino
+                      user?.rol === 'supervisor_bodega'
+                        ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
+                        : errors.destino
                         ? 'border-red-500 focus:ring-red-500'
                         : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                     }`}

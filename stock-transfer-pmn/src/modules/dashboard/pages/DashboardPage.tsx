@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
+import { useAuth } from '../../../shared/auth/AuthContext'
 import type { TransferStatus } from '../../transferencias/types'
 
 const getStatusColor = (status: TransferStatus) => {
@@ -43,6 +44,10 @@ const getStatusLabel = (status: TransferStatus) => {
 
 export default function DashboardPage() {
   const { transfers, loading } = useTransferStore()
+  const { user } = useAuth()
+
+  const canCreateTransfer =
+    user?.rol === 'administrador' || user?.rol === 'supervisor_bodega'
 
   if (loading) {
     return (
@@ -110,12 +115,14 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="mt-1 text-gray-600">Panel operacional en tiempo real - {stats.total} transferencias activas</p>
         </div>
-        <Link
-          to="/transfers/new"
-          className="px-4 py-2 rounded-lg bg-blue-600 font-medium text-white hover:bg-blue-700 transition"
-        >
-          + Nueva Transferencia
-        </Link>
+        {canCreateTransfer && (
+          <Link
+            to="/transfers/create"
+            className="px-4 py-2 rounded-lg bg-blue-600 font-medium text-white hover:bg-blue-700 transition"
+          >
+            + Nueva Transferencia
+          </Link>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -250,52 +257,6 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-blue-900 mb-3">Flujo Principal (Happy Path)</h3>
-          <div className="space-y-2 text-xs text-blue-700">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-600"></span>
-              CREADA → APROBADA
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-600"></span>
-              APROBADA → RESERVADA
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-600"></span>
-              RESERVADA → EN_TRANSITO
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-600"></span>
-              EN_TRANSITO → RECIBIDA_SIN_DIFERENCIA
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-600"></span>
-              RECIBIDA_SIN_DIFERENCIA → CERRADA
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Estados Críticos</h3>
-          <div className="space-y-2 text-xs text-gray-700">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-red-600"></span>
-              RECHAZADA - Transferencia rechazada
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-red-600"></span>
-              ERROR_RESERVA - Falla en reserva de producto
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-orange-600"></span>
-              CON_DIFERENCIA - Diferencia en recepción
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   )

@@ -116,19 +116,30 @@ export async function seedDatabaseIfNeeded() {
       
       if (getRolesErr) throw getRolesErr
 
-      if (dbRoles) {
+      const { data: dbBodegas, error: getBodegasErr } = await supabase
+        .from('bodegas')
+        .select('id, nombre')
+
+      if (getBodegasErr) throw getBodegasErr
+
+      if (dbRoles && dbBodegas) {
         const getRoleId = (roleName: string) => {
           const role = dbRoles.find(r => r.nombre.toLowerCase() === roleName.toLowerCase())
           return role ? role.id : null
         }
 
+        const getBodegaId = (bodegaName: string) => {
+          const b = dbBodegas.find(x => x.nombre.toLowerCase() === bodegaName.toLowerCase())
+          return b ? b.id : null
+        }
+
         const userInserts = [
-          { nombre: 'Rodrigo M.', email: 'rodrigo@controlbodegas.com', rol_id: getRoleId('supervisor_bodega'), activo: true },
-          { nombre: 'Carlos S.', email: 'carlos@controlbodegas.com', rol_id: getRoleId('supervisor_bodega'), activo: true },
-          { nombre: 'Pedro R.', email: 'pedro@controlbodegas.com', rol_id: getRoleId('operador_bodega'), activo: true },
-          { nombre: 'Miguel A.', email: 'miguel@controlbodegas.com', rol_id: getRoleId('operador_bodega'), activo: true },
-          { nombre: 'Juan T.', email: 'juan@controlbodegas.com', rol_id: getRoleId('transportista'), activo: true },
-          { nombre: 'Admin Control', email: 'admin@controlbodegas.com', rol_id: getRoleId('administrador'), activo: true }
+          { nombre: 'Rodrigo M.', email: 'rodrigo@controlbodegas.com', rol_id: getRoleId('supervisor_bodega'), bodega_id: getBodegaId('Bodega Sur'), activo: true },
+          { nombre: 'Carlos S.', email: 'carlos@controlbodegas.com', rol_id: getRoleId('supervisor_bodega'), bodega_id: getBodegaId('Bodega Centro'), activo: true },
+          { nombre: 'Pedro R.', email: 'pedro@controlbodegas.com', rol_id: getRoleId('operador_bodega'), bodega_id: getBodegaId('Bodega Centro'), activo: true },
+          { nombre: 'Miguel A.', email: 'miguel@controlbodegas.com', rol_id: getRoleId('operador_bodega'), bodega_id: getBodegaId('Bodega Sur'), activo: true },
+          { nombre: 'Juan T.', email: 'juan@controlbodegas.com', rol_id: getRoleId('transportista'), bodega_id: null, activo: true },
+          { nombre: 'Admin Control', email: 'admin@controlbodegas.com', rol_id: getRoleId('administrador'), bodega_id: null, activo: true }
         ].filter(u => u.rol_id !== null)
 
         if (userInserts.length > 0) {

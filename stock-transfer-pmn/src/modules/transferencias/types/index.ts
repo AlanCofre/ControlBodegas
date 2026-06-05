@@ -24,6 +24,7 @@ export type Priority = 'baja' | 'normal' | 'alta' | 'urgente'
 export interface Transfer {
   id: string
   db_id?: number
+  solicitante_id?: number
   producto: string
   producto_id?: number
   cantidad: number

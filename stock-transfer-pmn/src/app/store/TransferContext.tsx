@@ -70,6 +70,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
             id,
             nombre,
             email,
+            bodega_id,
             roles!rol_id (
               id,
               nombre
@@ -155,6 +156,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
         return {
           id: t.codigo,
           db_id: Number(t.id),
+          solicitante_id: t.solicitante_id ? Number(t.solicitante_id) : undefined,
           producto: prodData ? (Array.isArray(prodData) ? prodData[0]?.nombre : prodData.nombre) : 'Producto Desconocido',
           producto_id: t.producto_id,
           cantidad: t.cantidad,
@@ -174,8 +176,22 @@ export function TransferProvider({ children }: { children: ReactNode }) {
         }
       })
 
-      setTransfers(mappedTransfers)
-      setAuditLog(mappedEvents)
+      // Filtrar transferencias y eventos según el rol del usuario autenticado
+      let filteredTransfers = mappedTransfers
+      let filteredEvents = mappedEvents
+
+      const user = auth.user
+      if (user && (user.rol === 'supervisor_bodega' || user.rol === 'operador_bodega')) {
+        const bodegaId = user.bodegaId
+        filteredTransfers = mappedTransfers.filter(
+          (t) => t.origen_id === bodegaId || t.destino_id === bodegaId
+        )
+        const allowedTransferCodes = new Set(filteredTransfers.map((t) => t.id))
+        filteredEvents = mappedEvents.filter((ev) => allowedTransferCodes.has(ev.transferencia_id))
+      }
+
+      setTransfers(filteredTransfers)
+      setAuditLog(filteredEvents)
     } catch (err) {
       console.error('Error al actualizar datos desde Supabase:', err)
     }
@@ -220,13 +236,19 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     }
 
     // 3. Obtener ID de la bodega de destino
-    const { data: destData } = await supabase
-      .from('bodegas')
-      .select('id')
-      .eq('nombre', destino)
-      .single()
+    let destinoId: number
+    if (auth.user && auth.user.rol === 'supervisor_bodega' && auth.user.bodegaId) {
+      destinoId = auth.user.bodegaId
+    } else {
+      const { data: destData } = await supabase
+        .from('bodegas')
+        .select('id')
+        .eq('nombre', destino)
+        .single()
 
-    if (!destData) throw new Error(`Bodega destino no encontrada: ${destino}`)
+      if (!destData) throw new Error(`Bodega destino no encontrada: ${destino}`)
+      destinoId = Number(destData.id)
+    }
 
     // 4. Generar código único
     const newCodigo = `TRF-2026-${Math.floor(100000 + Math.random() * 900000)}`
@@ -249,7 +271,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
         cantidad,
         estado: 'CREADA',
         bodega_origen_id: origenId,
-        bodega_destino_id: destData.id,
+        bodega_destino_id: destinoId,
         solicitante_id: solicitanteId,
         observacion: observacionJson,
       })

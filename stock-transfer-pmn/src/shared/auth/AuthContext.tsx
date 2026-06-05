@@ -12,6 +12,7 @@ export interface DbUser {
   nombre: string
   rol: UserRole
   email: string
+  bodegaId?: number | null
 }
 
 interface AuthUser {
@@ -19,6 +20,7 @@ interface AuthUser {
   nombre: string
   rol: UserRole
   email: string
+  bodegaId?: number | null
 }
 
 interface AuthContextType {
@@ -68,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id,
           nombre,
           email,
+          bodega_id,
           roles!rol_id (
             nombre
           )
@@ -86,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             nombre: u.nombre,
             rol: normalizeRole(rawRole),
             email: u.email,
+            bodegaId: u.bodega_id ? Number(u.bodega_id) : null,
           }
         })
         setDbUsers(mapped)
@@ -110,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           nombre: selectedUser.nombre,
           rol: selectedUser.rol,
           email: selectedUser.email,
+          bodegaId: selectedUser.bodegaId,
         })
         return
       }
@@ -121,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id,
           nombre,
           email,
+          bodega_id,
           roles!rol_id (
             nombre
           )
@@ -137,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         nombre: userData.nombre,
         rol: normalizeRole(rawRole),
         email: userData.email,
+        bodegaId: userData.bodega_id ? Number(userData.bodega_id) : null,
       })
     } catch (error) {
       console.error('Error durante el login en Supabase:', error)

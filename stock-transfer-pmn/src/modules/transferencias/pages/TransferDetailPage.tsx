@@ -45,26 +45,46 @@ const getStatusLabel = (status: TransferStatus) => {
 }
 
 const getActionButtons = (
-  status: TransferStatus,
-  currentRole?: string,
+  transfer: any,
+  user?: { id: number; rol: string; bodegaId?: number | null } | null,
 ): { label: string; action: string; color: string }[] => {
-  if (
-    (status === 'CREADA' || status === 'ESCALADA') &&
-    (currentRole === 'administrador' ||
-      currentRole === 'supervisor_bodega')
-  ) {
-    return [
-      {
-        label: 'Aprobar',
-        action: 'approve',
-        color: 'bg-green-600 hover:bg-green-700',
-      },
-      {
-        label: 'Rechazar',
-        action: 'reject',
-        color: 'bg-red-600 hover:bg-red-700',
-      },
-    ]
+  const status = transfer.estado
+  const currentRole = user?.rol
+
+
+  if (status === 'CREADA' || status === 'ESCALADA') {
+    if (currentRole === 'administrador') {
+      return [
+        {
+          label: 'Aprobar',
+          action: 'approve',
+          color: 'bg-green-600 hover:bg-green-700',
+        },
+        {
+          label: 'Rechazar',
+          action: 'reject',
+          color: 'bg-red-600 hover:bg-red-700',
+        },
+      ]
+    }
+    if (currentRole === 'supervisor_bodega' && user) {
+      const isCreator = transfer.solicitante_id === user.id
+      const isOriginWarehouse = transfer.origen_id === user.bodegaId
+      if (!isCreator && isOriginWarehouse) {
+        return [
+          {
+            label: 'Aprobar',
+            action: 'approve',
+            color: 'bg-green-600 hover:bg-green-700',
+          },
+          {
+            label: 'Rechazar',
+            action: 'reject',
+            color: 'bg-red-600 hover:bg-red-700',
+          },
+        ]
+      }
+    }
   }
 
   if (
@@ -130,7 +150,8 @@ const getActionButtons = (
 export default function TransferDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const currentRole = useAuth().user?.rol
+  const { user } = useAuth()
+  const currentRole = user?.rol
   const {
     transfers,
     approveTransfer,
@@ -168,7 +189,7 @@ export default function TransferDetailPage() {
     )
   }
 
-  const actions = getActionButtons(transfer.estado, currentRole)
+  const actions = getActionButtons(transfer, user)
 
   const handleAction = async (action: string) => {
     setActionLoading(true)

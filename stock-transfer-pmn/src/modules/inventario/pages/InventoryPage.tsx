@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../../../shared/utils/supabaseClient'
+import { useAuth } from '../../../shared/auth/AuthContext'
 
 interface InventoryItem {
   id: number
@@ -13,6 +14,7 @@ interface InventoryItem {
 }
 
 export default function InventoryPage() {
+  const { user } = useAuth()
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -24,10 +26,11 @@ export default function InventoryPage() {
     return ['Todas', ...Array.from(list)]
   }, [items])
 
-  const fetchInventory = async () => {
+  const fetchInventory = useCallback(async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from('inventario')
         .select(`
           id,
@@ -43,6 +46,17 @@ export default function InventoryPage() {
             stock_minimo
           )
         `)
+
+      if (user && (user.rol === 'supervisor_bodega' || user.rol === 'operador_bodega')) {
+        if (user.bodegaId) {
+          query = query.eq('bodega_id', user.bodegaId)
+        } else {
+          // Si es supervisor u operador pero no tiene bodega asociada, no mostramos registros
+          query = query.eq('bodega_id', -1)
+        }
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
 
@@ -64,11 +78,11 @@ export default function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
 
   useEffect(() => {
     fetchInventory()
-  }, [])
+  }, [fetchInventory])
 
   // Calcular estadísticas
   const stats = useMemo(() => {
