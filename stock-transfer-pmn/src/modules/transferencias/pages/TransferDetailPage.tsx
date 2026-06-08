@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
 import { useAuth } from '../../../shared/auth/AuthContext'
-import StockValidationFlow from '../components/StockValidationFlow'
-import SupervisorEvaluation from '../components/SupervisorEvaluation'
 import type { TransferStatus } from '../types'
 
 const getStatusColor = (status: TransferStatus) => {
@@ -19,7 +17,7 @@ const getStatusColor = (status: TransferStatus) => {
     CON_DIFERENCIA: 'bg-orange-100 text-orange-800 border border-orange-300',
     CERRADA: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
     RECHAZADA: 'bg-red-100 text-red-800 border border-red-300',
-    SIN_ORIGEN_DISPONIBLE: 'bg-rose-100 text-rose-800 border border-rose-300',
+    SIN_ORIGEN: 'bg-rose-100 text-rose-800 border border-rose-300',
     ERROR_RESERVA: 'bg-red-100 text-red-800 border border-red-300',
     ESCALADA: 'bg-amber-100 text-amber-800 border border-amber-300',
   }
@@ -38,7 +36,7 @@ const getStatusLabel = (status: TransferStatus) => {
     CON_DIFERENCIA: 'Con diferencia',
     CERRADA: 'Cerrada',
     RECHAZADA: 'Rechazada',
-    SIN_ORIGEN_DISPONIBLE: 'Sin origen disponible',
+    SIN_ORIGEN: 'Sin origen disponible',
     ERROR_RESERVA: 'Error de reserva',
     ESCALADA: 'Escalada',
   }
@@ -47,32 +45,52 @@ const getStatusLabel = (status: TransferStatus) => {
 }
 
 const getActionButtons = (
-  status: TransferStatus,
-  currentRole?: string,
+  transfer: any,
+  user?: { id: number; rol: string; bodegaId?: number | null } | null,
 ): { label: string; action: string; color: string }[] => {
-  if (
-    (status === 'CREADA' || status === 'ESCALADA') &&
-    (currentRole === 'administrador' ||
-      currentRole === 'supervisor_remitente')
-  ) {
-    return [
-      {
-        label: 'Aprobar',
-        action: 'approve',
-        color: 'bg-green-600 hover:bg-green-700',
-      },
-      {
-        label: 'Rechazar',
-        action: 'reject',
-        color: 'bg-red-600 hover:bg-red-700',
-      },
-    ]
+  const status = transfer.estado
+  const currentRole = user?.rol
+
+
+  if (status === 'CREADA' || status === 'ESCALADA') {
+    if (currentRole === 'administrador') {
+      return [
+        {
+          label: 'Aprobar',
+          action: 'approve',
+          color: 'bg-green-600 hover:bg-green-700',
+        },
+        {
+          label: 'Rechazar',
+          action: 'reject',
+          color: 'bg-red-600 hover:bg-red-700',
+        },
+      ]
+    }
+    if (currentRole === 'supervisor_bodega' && user) {
+      const isCreator = transfer.solicitante_id === user.id
+      const isOriginWarehouse = transfer.origen_id === user.bodegaId
+      if (!isCreator && isOriginWarehouse) {
+        return [
+          {
+            label: 'Aprobar',
+            action: 'approve',
+            color: 'bg-green-600 hover:bg-green-700',
+          },
+          {
+            label: 'Rechazar',
+            action: 'reject',
+            color: 'bg-red-600 hover:bg-red-700',
+          },
+        ]
+      }
+    }
   }
 
   if (
     (status === 'APROBADA' || status === 'ERROR_RESERVA') &&
     (currentRole === 'administrador' ||
-      currentRole === 'supervisor_remitente')
+      currentRole === 'supervisor_bodega')
   ) {
     return [
       {
@@ -86,7 +104,8 @@ const getActionButtons = (
   if (
     status === 'RESERVADA' &&
     (currentRole === 'administrador' ||
-      currentRole === 'operario_despacho')
+      currentRole === 'operador_bodega' ||
+      currentRole === 'transportista')
   ) {
     return [
       {
@@ -100,7 +119,7 @@ const getActionButtons = (
   if (
     (status === 'EN_TRANSITO' || status === 'EN_TRANSITO_CON_INCIDENTE') &&
     (currentRole === 'administrador' ||
-      currentRole === 'operario_recepcion')
+      currentRole === 'operador_bodega')
   ) {
     return [
       {
@@ -114,7 +133,7 @@ const getActionButtons = (
   if (
     (status === 'RECIBIDA_SIN_DIFERENCIA' || status === 'CON_DIFERENCIA') &&
     (currentRole === 'administrador' ||
-      currentRole === 'supervisor_solicitante')
+      currentRole === 'supervisor_bodega')
   ) {
     return [
       {
@@ -131,7 +150,8 @@ const getActionButtons = (
 export default function TransferDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const currentRole = useAuth().user?.rol
+  const { user } = useAuth()
+  const currentRole = user?.rol
   const {
     transfers,
     approveTransfer,
@@ -146,6 +166,8 @@ export default function TransferDetailPage() {
   const [rejectReason, setRejectReason] = useState('')
   const [showReceiveModal, setShowReceiveModal] = useState(false)
   const [quantityReceived, setQuantityReceived] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
   const transfer = transfers.find((t) => t.id === id)
 
@@ -167,45 +189,68 @@ export default function TransferDetailPage() {
     )
   }
 
-  const actions = getActionButtons(transfer.estado, currentRole)
+  const actions = getActionButtons(transfer, user)
 
-  const handleAction = (action: string) => {
-    switch (action) {
-      case 'approve':
-        approveTransfer(transfer.id)
-        break
-      case 'reject':
-        setShowRejectModal(true)
-        break
-      case 'reserve':
-        reserveTransfer(transfer.id)
-        break
-      case 'dispatch':
-        dispatchTransfer(transfer.id)
-        break
-      case 'receive':
-        setShowReceiveModal(true)
-        break
-      case 'close':
-        closeTransfer(transfer.id)
-        break
+  const handleAction = async (action: string) => {
+    setActionLoading(true)
+    setErrorMessage('')
+    try {
+      switch (action) {
+        case 'approve':
+          await approveTransfer(transfer.id)
+          break
+        case 'reject':
+          setShowRejectModal(true)
+          break
+        case 'reserve':
+          await reserveTransfer(transfer.id)
+          break
+        case 'dispatch':
+          await dispatchTransfer(transfer.id)
+          break
+        case 'receive':
+          setShowReceiveModal(true)
+          break
+        case 'close':
+          await closeTransfer(transfer.id)
+          break
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error al ejecutar la acción')
+    } finally {
+      setActionLoading(false)
     }
   }
 
-  const handleRejectConfirm = () => {
+  const handleRejectConfirm = async () => {
     if (!rejectReason.trim()) return
-    rejectTransfer(transfer.id, rejectReason)
-    setShowRejectModal(false)
-    setRejectReason('')
+    setActionLoading(true)
+    setErrorMessage('')
+    try {
+      await rejectTransfer(transfer.id, rejectReason)
+      setShowRejectModal(false)
+      setRejectReason('')
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error al rechazar')
+    } finally {
+      setActionLoading(false)
+    }
   }
 
-  const handleReceiveConfirm = () => {
+  const handleReceiveConfirm = async () => {
     const parsed = parseInt(quantityReceived, 10)
     if (Number.isNaN(parsed) || parsed < 0) return
-
-    receiveTransfer(transfer.id, parsed)
-    setShowReceiveModal(false)
-    setQuantityReceived('')
+    setActionLoading(true)
+    setErrorMessage('')
+    try {
+      await receiveTransfer(transfer.id, parsed)
+      setShowReceiveModal(false)
+      setQuantityReceived('')
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error al recibir')
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   const formatDate = (dateString: string) => {
@@ -380,21 +425,35 @@ export default function TransferDetailPage() {
         </div>
       </div>
 
-      {actions.length > 0 && (
+      {(actions.length > 0 || errorMessage) && (
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">
             Acciones disponibles
           </h2>
-          <div className="flex flex-wrap gap-3">
+
+          {errorMessage && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              {errorMessage}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3">
             {actions.map((action) => (
               <button
                 key={action.action}
                 onClick={() => handleAction(action.action)}
-                className={`rounded-lg px-4 py-2 font-medium text-white transition ${action.color}`}
+                disabled={actionLoading}
+                className={`rounded-lg px-4 py-2 font-medium text-white transition disabled:opacity-50 disabled:cursor-not-allowed ${action.color}`}
               >
                 {action.label}
               </button>
             ))}
+            {actionLoading && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                Procesando acción...
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -411,6 +470,7 @@ export default function TransferDetailPage() {
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
+              disabled={actionLoading}
               className="mb-4 w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               rows={4}
               placeholder="Motivo del rechazo..."
@@ -421,13 +481,14 @@ export default function TransferDetailPage() {
                   setShowRejectModal(false)
                   setRejectReason('')
                 }}
-                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50"
+                disabled={actionLoading}
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleRejectConfirm}
-                disabled={!rejectReason.trim()}
+                disabled={!rejectReason.trim() || actionLoading}
                 className="flex-1 rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Confirmar rechazo
@@ -453,6 +514,7 @@ export default function TransferDetailPage() {
               type="number"
               value={quantityReceived}
               onChange={(e) => setQuantityReceived(e.target.value)}
+              disabled={actionLoading}
               className="mb-4 w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               min="0"
               placeholder="Cantidad recibida..."
@@ -463,13 +525,14 @@ export default function TransferDetailPage() {
                   setShowReceiveModal(false)
                   setQuantityReceived('')
                 }}
-                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50"
+                disabled={actionLoading}
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleReceiveConfirm}
-                disabled={!quantityReceived}
+                disabled={!quantityReceived || actionLoading}
                 className="flex-1 rounded-lg bg-cyan-600 px-4 py-2 font-medium text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Confirmar recepción

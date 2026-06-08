@@ -10,6 +10,7 @@ import TransfersPage from './modules/transferencias/pages/TransferListPage'
 import AuditPage from './modules/auditoria/pages/AuditPage'
 import CreateTransferPage from './modules/transferencias/pages/CreateTransferPage'
 import TransferDetailPage from './modules/transferencias/pages/TransferDetailPage'
+import InventoryPage from './modules/inventario/pages/InventoryPage'
 
 function AppContent() {
   const { isAuthenticated } = useAuth()
@@ -28,6 +29,7 @@ function AppContent() {
             <Route path="/transfers" element={<TransfersPage />} />
             <Route path="/transfers/create" element={<CreateTransferPage />} />
             <Route path="/transfers/:id" element={<TransferDetailPage />} />
+            <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/audit" element={<AuditPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

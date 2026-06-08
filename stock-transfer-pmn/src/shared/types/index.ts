@@ -11,6 +11,7 @@ export interface User {
   name: string
   email: string
   role: UserRole
+  bodegaId?: number | null
 }
 
 export interface TransferStatus {
@@ -21,12 +22,10 @@ export interface TransferStatus {
 
 
 export type UserRole =
-  | 'administrador_sistema'
-  | 'supervisor_solicitante'
-  | 'supervisor_remitente'
-  | 'operario_remitente'
-  | 'operario_destino'
-  | 'supervisor_superior'
+  | 'administrador'
+  | 'supervisor_bodega'
+  | 'operador_bodega'
+  | 'transportista'
 
 
 export type TransferStatusValue =

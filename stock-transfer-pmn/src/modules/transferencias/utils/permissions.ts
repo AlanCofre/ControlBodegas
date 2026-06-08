@@ -78,12 +78,19 @@ export function getAvailableActions(
   }
 
   switch (currentRole) {
-    case 'supervisor_solicitante':
+    case 'supervisor_bodega':
       actions.push({ key: 'view', label: 'Ver detalle', variant: 'secondary' })
 
       if (transfer.status === 'creada') {
         actions.push({ key: 'edit', label: 'Editar', variant: 'secondary' })
         actions.push({ key: 'cancel', label: 'Cancelar', variant: 'danger' })
+        actions.push({ key: 'approve', label: 'Aprobar', variant: 'primary' })
+        actions.push({ key: 'reject', label: 'Rechazar', variant: 'danger' })
+      }
+
+      if (transfer.status === 'escalada') {
+        actions.push({ key: 'approve', label: 'Aprobar', variant: 'primary' })
+        actions.push({ key: 'reject', label: 'Rechazar', variant: 'danger' })
       }
 
       if (
@@ -112,16 +119,7 @@ export function getAvailableActions(
       }
       break
 
-    case 'supervisor_remitente':
-      actions.push({ key: 'view', label: 'Ver detalle', variant: 'secondary' })
-
-      if (transfer.status === 'creada' || transfer.status === 'escalada') {
-        actions.push({ key: 'approve', label: 'Aprobar', variant: 'primary' })
-        actions.push({ key: 'reject', label: 'Rechazar', variant: 'danger' })
-      }
-      break
-
-    case 'operario_despacho':
+    case 'operador_bodega':
       actions.push({ key: 'view', label: 'Ver detalle', variant: 'secondary' })
 
       if (transfer.status === 'reservada') {
@@ -136,10 +134,6 @@ export function getAvailableActions(
           variant: 'primary',
         })
       }
-      break
-
-    case 'operario_recepcion':
-      actions.push({ key: 'view', label: 'Ver detalle', variant: 'secondary' })
 
       if (
         transfer.status === 'en_transito' ||
@@ -148,6 +142,18 @@ export function getAvailableActions(
         actions.push({
           key: 'receive',
           label: 'Registrar recepción',
+          variant: 'primary',
+        })
+      }
+      break
+
+    case 'transportista':
+      actions.push({ key: 'view', label: 'Ver detalle', variant: 'secondary' })
+
+      if (transfer.status === 'reservada') {
+        actions.push({
+          key: 'dispatch',
+          label: 'Registrar despacho (Iniciar Transporte)',
           variant: 'primary',
         })
       }

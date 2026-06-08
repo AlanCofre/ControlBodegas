@@ -8,7 +8,7 @@ export const TRANSFER_STATUS = {
   CON_DIFERENCIA: 'CON_DIFERENCIA',
   CERRADA: 'CERRADA',
   RECHAZADA: 'RECHAZADA',
-  SIN_ORIGEN_DISPONIBLE: 'SIN_ORIGEN_DISPONIBLE',
+  SIN_ORIGEN: 'SIN_ORIGEN',
   ERROR_RESERVA: 'ERROR_RESERVA',
   ESCALADA: 'ESCALADA',
 } as const
@@ -23,7 +23,7 @@ export const TRANSFER_STATUS_LABELS = {
   CON_DIFERENCIA: 'Con diferencia',
   CERRADA: 'Cerrada',
   RECHAZADA: 'Rechazada',
-  SIN_ORIGEN_DISPONIBLE: 'Sin origen disponible',
+  SIN_ORIGEN: 'Sin origen disponible',
   ERROR_RESERVA: 'Error de reserva',
   ESCALADA: 'Escalada',
 } as const
@@ -38,7 +38,7 @@ export const TRANSFER_STATUS_COLORS = {
   CON_DIFERENCIA: 'orange',
   CERRADA: 'emerald',
   RECHAZADA: 'red',
-  SIN_ORIGEN_DISPONIBLE: 'rose',
+  SIN_ORIGEN: 'rose',
   ERROR_RESERVA: 'red',
   ESCALADA: 'amber',
 } as const

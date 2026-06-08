@@ -16,7 +16,7 @@ const getStatusColor = (status: TransferStatus) => {
     CON_DIFERENCIA: 'bg-orange-100 text-orange-800 border border-orange-300',
     CERRADA: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
     RECHAZADA: 'bg-red-100 text-red-800 border border-red-300',
-    SIN_ORIGEN_DISPONIBLE: 'bg-rose-100 text-rose-800 border border-rose-300',
+    SIN_ORIGEN: 'bg-rose-100 text-rose-800 border border-rose-300',
     ERROR_RESERVA: 'bg-red-100 text-red-800 border border-red-300',
     ESCALADA: 'bg-amber-100 text-amber-800 border border-amber-300',
   }
@@ -35,7 +35,7 @@ const getStatusLabel = (status: TransferStatus) => {
     CON_DIFERENCIA: 'Con diferencia',
     CERRADA: 'Cerrada',
     RECHAZADA: 'Rechazada',
-    SIN_ORIGEN_DISPONIBLE: 'Sin origen disponible',
+    SIN_ORIGEN: 'Sin origen disponible',
     ERROR_RESERVA: 'Error de reserva',
     ESCALADA: 'Escalada',
   }
@@ -44,7 +44,7 @@ const getStatusLabel = (status: TransferStatus) => {
 }
 
 export default function TransferListPage() {
-  const { transfers } = useTransferStore()
+  const { transfers, loading } = useTransferStore()
   const currentRole = useAuth().user?.rol
 
   const sortedTransfers = [...transfers].sort(
@@ -58,7 +58,18 @@ export default function TransferListPage() {
 
   const canCreateTransfer =
     currentRole === 'administrador' ||
-    currentRole === 'supervisor_solicitante'
+    currentRole === 'supervisor_bodega'
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          <p className="text-sm font-medium text-gray-500">Cargando transferencias...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

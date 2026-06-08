@@ -9,14 +9,12 @@ function formatRoleLabel(role: string) {
   switch (role) {
     case 'administrador':
       return 'Administrador'
-    case 'supervisor_solicitante':
-      return 'Supervisor solicitante'
-    case 'supervisor_remitente':
-      return 'Supervisor remitente'
-    case 'operario_despacho':
-      return 'Operario de despacho'
-    case 'operario_recepcion':
-      return 'Operario de recepción'
+    case 'supervisor_bodega':
+      return 'Supervisor de Bodega'
+    case 'operador_bodega':
+      return 'Operador de Bodega'
+    case 'transportista':
+      return 'Transportista'
     default:
       return role
   }

@@ -8,27 +8,32 @@ export type TransferStatus =
   | 'CON_DIFERENCIA'
   | 'CERRADA'
   | 'RECHAZADA'
-  | 'SIN_ORIGEN_DISPONIBLE'
+  | 'SIN_ORIGEN'
   | 'ERROR_RESERVA'
   | 'ESCALADA'
 
 export type UserRole =
-  | 'supervisor_solicitante'
-  | 'supervisor_remitente'
-  | 'operario_despacho'
-  | 'operario_recepcion'
+  | 'administrador'
+  | 'supervisor_bodega'
+  | 'operador_bodega'
+  | 'transportista'
   | 'sistema'
 
 export type Priority = 'baja' | 'normal' | 'alta' | 'urgente'
 
 export interface Transfer {
   id: string
+  db_id?: number
+  solicitante_id?: number
   producto: string
+  producto_id?: number
   cantidad: number
   cantidad_recibida?: number
   diferencia?: number
   origen: string
+  origen_id?: number
   destino: string
+  destino_id?: number
   prioridad: Priority
   estado: TransferStatus
   creada_por: string
