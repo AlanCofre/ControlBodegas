@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import type { Transfer, AuditEvent, Priority, TransferStatus, UserRole } from '../../modules/transferencias/types'
 import { supabase, seedDatabaseIfNeeded } from '../../shared/utils/supabaseClient'
-import { useAuth } from '../../shared/auth/AuthContext'
+import { useAuth, type DbUser, normalizeRole } from '../../shared/auth/AuthContext'
 
 interface TransferContextType {
   transfers: Transfer[]
@@ -23,6 +23,19 @@ interface TransferContextType {
   closeTransfer: (transferId: string) => Promise<void>
   errorTransfer: (transferId: string, error: string) => Promise<void>
   refreshData: () => Promise<void>
+  adjustStock: (
+    productoId: number,
+    productoNombre: string,
+    bodegaId: number,
+    bodegaNombre: string,
+    tipoAjuste: 'incrementar' | 'disminuir',
+    cantidad: number,
+    motivo: string,
+  ) => Promise<void>
+  cancelReserveTransfer: (transferId: string, motivo: string) => Promise<void>
+  assignCarrier: (transferId: string, carrierId: number) => Promise<void>
+  getAvailableCarriers: () => Promise<DbUser[]>
+  reportIncident: (transferId: string, descripcion: string) => Promise<void>
 }
 
 const TransferContext = createContext<TransferContextType | undefined>(undefined)
@@ -75,6 +88,12 @@ export function TransferProvider({ children }: { children: ReactNode }) {
               id,
               nombre
             )
+          ),
+          transportista_id,
+          transportista:usuarios!transportista_id (
+            id,
+            nombre,
+            email
           )
         `)
 
@@ -103,10 +122,15 @@ export function TransferProvider({ children }: { children: ReactNode }) {
 
       if (eventsError) throw eventsError
 
+      // Obtener bodegas para mapeo en filtros de supervisor
+      const { data: bodegasData } = await supabase
+        .from('bodegas')
+        .select('id, nombre')
+
       // 3. Mapear los eventos a la interfaz del frontend
       const mappedEvents: AuditEvent[] = (eventsData || []).map((ev) => {
-        const transfer = transfersData?.find((t) => Number(t.id) === Number(ev.transferencia_id))
-        const code = transfer ? transfer.codigo : String(ev.transferencia_id)
+        const transfer = ev.transferencia_id ? transfersData?.find((t) => Number(t.id) === Number(ev.transferencia_id)) : null
+        const code = transfer ? transfer.codigo : (ev.transferencia_id ? String(ev.transferencia_id) : 'N/A')
         const user = ev.usuario as any
         return {
           id: String(ev.id),
@@ -125,6 +149,9 @@ export function TransferProvider({ children }: { children: ReactNode }) {
         let cantidad_recibida: number | undefined = undefined
         let diferencia: number | undefined = undefined
         let descripcion: string = ''
+        let motivo_rechazo: string | undefined = undefined
+        let motivo_cancelacion_reserva: string | undefined = undefined
+        let descripcion_incidente: string | undefined = undefined
 
         // Intentar parsear el JSON de observacion
         if (t.observacion) {
@@ -134,6 +161,9 @@ export function TransferProvider({ children }: { children: ReactNode }) {
             cantidad_recibida = meta.cantidad_recibida !== undefined ? meta.cantidad_recibida : undefined
             diferencia = meta.diferencia !== undefined ? meta.diferencia : undefined
             descripcion = meta.descripcion || ''
+            motivo_rechazo = meta.motivo_rechazo || undefined
+            motivo_cancelacion_reserva = meta.motivo_cancelacion_reserva || undefined
+            descripcion_incidente = meta.descripcion_incidente || undefined
           } catch (e) {
             // Si no es JSON, es texto plano
             descripcion = t.observacion
@@ -147,12 +177,12 @@ export function TransferProvider({ children }: { children: ReactNode }) {
         }
 
         const transEvents = mappedEvents.filter((ev) => ev.transferencia_id === t.codigo)
-
-        const prodData = t.productos as any
+        const prodData = t.productos as any
         const origData = t.bodega_origen as any
         const destData = t.bodega_destino as any
         const solData = t.solicitante as any
-
+        const transpData = t.transportista as any
+ 
         return {
           id: t.codigo,
           db_id: Number(t.id),
@@ -172,6 +202,11 @@ export function TransferProvider({ children }: { children: ReactNode }) {
           fecha_creacion: t.created_at,
           fecha_actualizacion: t.updated_at,
           descripcion,
+          motivo_rechazo,
+          motivo_cancelacion_reserva,
+          transportista_id: t.transportista_id ? Number(t.transportista_id) : undefined,
+          transportista_nombre: transpData ? (Array.isArray(transpData) ? transpData[0]?.nombre : transpData.nombre) : undefined,
+          descripcion_incidente: descripcion_incidente,
           eventos: transEvents,
         }
       })
@@ -187,7 +222,34 @@ export function TransferProvider({ children }: { children: ReactNode }) {
           (t) => t.origen_id === bodegaId || t.destino_id === bodegaId
         )
         const allowedTransferCodes = new Set(filteredTransfers.map((t) => t.id))
-        filteredEvents = mappedEvents.filter((ev) => allowedTransferCodes.has(ev.transferencia_id))
+
+        let supervisorBodegaNombre = ''
+        if (bodegaId && bodegasData) {
+          const b = bodegasData.find((x) => Number(x.id) === Number(bodegaId))
+          if (b) supervisorBodegaNombre = b.nombre
+        }
+
+        filteredEvents = mappedEvents.filter((ev) => {
+          if (ev.transferencia_id && ev.transferencia_id !== 'N/A') {
+            return allowedTransferCodes.has(ev.transferencia_id)
+          }
+          if (ev.accion === 'ajuste_manual') {
+            return supervisorBodegaNombre ? ev.descripcion.includes(supervisorBodegaNombre) : false
+          }
+          return false
+        })
+      } else if (user && user.rol === 'transportista') {
+        filteredTransfers = mappedTransfers.filter(
+          (t) => t.transportista_id === user.id
+        )
+        const allowedTransferCodes = new Set(filteredTransfers.map((t) => t.id))
+
+        filteredEvents = mappedEvents.filter((ev) => {
+          if (ev.transferencia_id && ev.transferencia_id !== 'N/A') {
+            return allowedTransferCodes.has(ev.transferencia_id)
+          }
+          return false
+        })
       }
 
       setTransfers(filteredTransfers)
@@ -355,6 +417,19 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     const t = transfers.find((x) => x.id === transferId)
     if (!t || !t.db_id || !t.origen_id || !t.producto_id) return
 
+    // Validar estado de la transferencia
+    if (t.estado !== 'APROBADA') {
+      throw new Error(`No se puede reservar: La transferencia debe estar en estado APROBADA. Estado actual: ${t.estado}`)
+    }
+
+    // Validar autorización para reservar stock
+    if (!auth.user || (auth.user.rol !== 'operador_bodega' && auth.user.rol !== 'administrador')) {
+      throw new Error('No autorizado: Solo los operadores de bodega o administradores pueden reservar stock.')
+    }
+    if (auth.user.rol === 'operador_bodega' && Number(t.origen_id) !== Number(auth.user.bodegaId)) {
+      throw new Error('No autorizado: Un operador solo puede reservar stock en su propia bodega de origen.')
+    }
+
     try {
       // 1. Obtener stock disponible de inventario en origen
       const { data: invData, error: invError } = await supabase
@@ -380,9 +455,9 @@ export function TransferProvider({ children }: { children: ReactNode }) {
 
         await supabase.from('eventos_auditoria').insert({
           transferencia_id: t.db_id,
-          usuario_id: null, // sistema
+          usuario_id: auth.user.id,
           accion: 'error_reserva',
-          descripcion: `Fallo de reserva: Stock insuficiente en ${t.origen}. Disponible: ${invData.stock_disponible}, Requerido: ${t.cantidad}`,
+          descripcion: `Fallo de reserva: Stock insuficiente en ${t.origen} para reservar ${t.cantidad} unidades. Operación realizada por el operador ${auth.user.nombre}.`,
         })
 
         await refreshData()
@@ -416,9 +491,9 @@ export function TransferProvider({ children }: { children: ReactNode }) {
       // 4. Registrar evento
       await supabase.from('eventos_auditoria').insert({
         transferencia_id: t.db_id,
-        usuario_id: null, // sistema
+        usuario_id: auth.user.id,
         accion: 'reservar_stock',
-        descripcion: `${t.cantidad} unidades reservadas en ${t.origen}`,
+        descripcion: `Reserva de stock realizada: ${t.cantidad} unidades de ${t.producto} reservadas por el operador ${auth.user.nombre} en ${t.origen}.`,
       })
 
       await refreshData()
@@ -435,9 +510,9 @@ export function TransferProvider({ children }: { children: ReactNode }) {
 
       await supabase.from('eventos_auditoria').insert({
         transferencia_id: t.db_id,
-        usuario_id: null,
+        usuario_id: auth.user ? auth.user.id : null,
         accion: 'error_reserva',
-        descripcion: `Error técnico de reserva: ${err.message || 'Error desconocido'}`,
+        descripcion: `Error técnico de reserva: ${err.message || 'Error desconocido'}.`,
       })
 
       await refreshData()
@@ -448,6 +523,18 @@ export function TransferProvider({ children }: { children: ReactNode }) {
   const dispatchTransfer = async (transferId: string): Promise<void> => {
     const t = transfers.find((x) => x.id === transferId)
     if (!t || !t.db_id) return
+
+    // Validar autorización para despachar transferencia (solo operador de origen o administrador)
+    if (!auth.user || (auth.user.rol !== 'operador_bodega' && auth.user.rol !== 'administrador')) {
+      throw new Error('No autorizado: Solo los operadores de bodega o administradores pueden despachar mercancía.')
+    }
+    if (auth.user.rol === 'operador_bodega' && Number(t.origen_id) !== Number(auth.user.bodegaId)) {
+      throw new Error('No autorizado: El operador solo puede registrar el despacho en su propia bodega de origen.')
+    }
+
+    if (!t.transportista_id) {
+      throw new Error('No se puede despachar: Debe asignar un transportista antes de realizar el despacho.')
+    }
 
     const { error: updateError } = await supabase
       .from('transferencias')
@@ -472,6 +559,14 @@ export function TransferProvider({ children }: { children: ReactNode }) {
   const receiveTransfer = async (transferId: string, cantidadRecibida: number): Promise<void> => {
     const t = transfers.find((x) => x.id === transferId)
     if (!t || !t.db_id || !t.origen_id || !t.destino_id || !t.producto_id) return
+
+    // Validar autorización para recibir transferencia (solo operador de destino o administrador)
+    if (!auth.user || (auth.user.rol !== 'operador_bodega' && auth.user.rol !== 'administrador')) {
+      throw new Error('No autorizado: Solo los operadores de bodega o administradores pueden recibir mercancía.')
+    }
+    if (auth.user.rol === 'operador_bodega' && Number(t.destino_id) !== Number(auth.user.bodegaId)) {
+      throw new Error('No autorizado: El operador solo puede registrar la recepción en su propia bodega de destino.')
+    }
 
     try {
       const diferencia = cantidadRecibida - t.cantidad
@@ -615,6 +710,268 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     await refreshData()
   }
 
+  const adjustStock = async (
+    productoId: number,
+    productoNombre: string,
+    bodegaId: number,
+    bodegaNombre: string,
+    tipoAjuste: 'incrementar' | 'disminuir',
+    cantidad: number,
+    motivo: string,
+  ): Promise<void> => {
+    try {
+      // 1. Obtener registro de inventario actual
+      const { data: invData, error: invError } = await supabase
+        .from('inventario')
+        .select('id, stock_disponible, stock_reservado')
+        .eq('bodega_id', bodegaId)
+        .eq('producto_id', productoId)
+        .maybeSingle()
+
+      if (invError) throw invError
+
+      const stockAnterior = invData ? Number(invData.stock_disponible) : 0
+      const stockNuevo = tipoAjuste === 'incrementar' ? stockAnterior + cantidad : stockAnterior - cantidad
+
+      if (stockNuevo < 0) {
+        throw new Error(`El stock resultante no puede ser menor a 0. Stock actual disponible: ${stockAnterior}, Ajuste solicitado: ${tipoAjuste === 'incrementar' ? '+' : '-'}${cantidad}`)
+      }
+
+      // 2. Actualizar o insertar registro en inventario
+      if (invData) {
+        const { error: updateError } = await supabase
+          .from('inventario')
+          .update({
+            stock_disponible: stockNuevo,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', invData.id)
+
+        if (updateError) throw updateError
+      } else {
+        const { error: insertError } = await supabase
+          .from('inventario')
+          .insert({
+            bodega_id: bodegaId,
+            producto_id: productoId,
+            stock_disponible: stockNuevo,
+            stock_reservado: 0,
+            updated_at: new Date().toISOString(),
+          })
+
+        if (insertError) throw insertError
+      }
+
+      // 3. Crear registro de auditoría
+      const signo = tipoAjuste === 'incrementar' ? '+' : '-'
+      const descripcion = `Ajuste manual de stock para ${productoNombre} en ${bodegaNombre}. Stock anterior: ${stockAnterior}, Ajuste: ${signo}${cantidad}, Stock resultante: ${stockNuevo}. Motivo: ${motivo}`
+
+      const { error: auditError } = await supabase
+        .from('eventos_auditoria')
+        .insert({
+          transferencia_id: null,
+          usuario_id: auth.user ? auth.user.id : null,
+          accion: 'ajuste_manual',
+          descripcion: descripcion,
+          fecha_evento: new Date().toISOString(),
+        })
+
+      if (auditError) throw auditError
+
+      await refreshData()
+    } catch (err) {
+      console.error('Error al realizar ajuste de stock:', err)
+      throw err
+    }
+  }
+
+  const cancelReserveTransfer = async (transferId: string, motivo: string): Promise<void> => {
+    const t = transfers.find((x) => x.id === transferId)
+    if (!t || !t.db_id) return
+
+    // Validar estado de la transferencia
+    if (t.estado !== 'APROBADA') {
+      throw new Error(`No se puede cancelar: La transferencia debe estar en estado APROBADA. Estado actual: ${t.estado}`)
+    }
+
+    // Validar autorización para cancelar reserva
+    if (!auth.user || (auth.user.rol !== 'operador_bodega' && auth.user.rol !== 'administrador')) {
+      throw new Error('No autorizado: Solo los operadores de bodega o administradores pueden cancelar la reserva.')
+    }
+    if (auth.user.rol === 'operador_bodega' && Number(t.origen_id) !== Number(auth.user.bodegaId)) {
+      throw new Error('No autorizado: Un operador solo puede cancelar la reserva de una transferencia en su propia bodega.')
+    }
+
+    // Actualizar observación JSON para agregar el motivo de cancelación
+    const newObservacion = JSON.stringify({
+      prioridad: t.prioridad,
+      descripcion: t.descripcion,
+      motivo_cancelacion_reserva: motivo,
+    })
+
+    const { error: updateError } = await supabase
+      .from('transferencias')
+      .update({
+        estado: 'ERROR_RESERVA',
+        observacion: newObservacion,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', t.db_id)
+
+    if (updateError) throw updateError
+
+    // Registrar evento de auditoría
+    await supabase.from('eventos_auditoria').insert({
+      transferencia_id: t.db_id,
+      usuario_id: auth.user.id,
+      accion: 'error_reserva',
+      descripcion: `Reserva cancelada por operador: ${motivo}.`,
+    })
+
+    await refreshData()
+  }
+
+  const getAvailableCarriers = async (): Promise<DbUser[]> => {
+    try {
+      const { data: dbUsersData, error: usersError } = await supabase
+        .from('usuarios')
+        .select(`
+          id,
+          nombre,
+          email,
+          bodega_id,
+          roles!rol_id (
+            nombre
+          )
+        `)
+        .eq('activo', true)
+
+      if (usersError || !dbUsersData) {
+        console.error('Error al obtener transportistas:', usersError)
+        return []
+      }
+
+      const { data: activeTransfers, error: transError } = await supabase
+        .from('transferencias')
+        .select('transportista_id')
+        .eq('estado', 'EN_TRANSITO')
+        .not('transportista_id', 'is', null)
+
+      if (transError) {
+        console.error('Error al obtener transferencias activas:', transError)
+        return []
+      }
+
+      const busyCarrierIds = new Set((activeTransfers || []).map((t) => Number(t.transportista_id)))
+
+      return dbUsersData
+        .map((u: any) => {
+          const rawRole = u.roles ? (Array.isArray(u.roles) ? u.roles[0]?.nombre : u.roles.nombre) : ''
+          return {
+            id: Number(u.id),
+            nombre: u.nombre,
+            rol: normalizeRole(rawRole),
+            email: u.email,
+            bodegaId: u.bodega_id ? Number(u.bodega_id) : null,
+          } as DbUser
+        })
+        .filter((u) => u.rol === 'transportista' && !busyCarrierIds.has(u.id))
+    } catch (err) {
+      console.error('Error en getAvailableCarriers:', err)
+      return []
+    }
+  }
+
+  const assignCarrier = async (transferId: string, carrierId: number): Promise<void> => {
+    const t = transfers.find((x) => x.id === transferId)
+    if (!t || !t.db_id) return
+
+    if (!auth.user || (auth.user.rol !== 'operador_bodega' && auth.user.rol !== 'administrador')) {
+      throw new Error('No autorizado: Solo los operadores de bodega o administradores pueden asignar transportistas.')
+    }
+    if (auth.user.rol === 'operador_bodega' && Number(t.origen_id) !== Number(auth.user.bodegaId)) {
+      throw new Error('No autorizado: Un operador solo puede asignar transportistas en transferencias de su propia bodega de origen.')
+    }
+
+    try {
+      const available = await getAvailableCarriers()
+      if (!available.some((c) => c.id === carrierId)) {
+        throw new Error('El transportista seleccionado no está disponible o no existe.')
+      }
+
+      const carrier = available.find((c) => c.id === carrierId)
+      const carrierName = carrier ? carrier.nombre : `ID ${carrierId}`
+
+      const { error: updateError } = await supabase
+        .from('transferencias')
+        .update({
+          transportista_id: carrierId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', t.db_id)
+
+      if (updateError) throw updateError
+
+      await supabase.from('eventos_auditoria').insert({
+        transferencia_id: t.db_id,
+        usuario_id: auth.user.id,
+        accion: 'asignar_transportista',
+        descripcion: `Transportista ${carrierName} asignado por ${auth.user.nombre}.`,
+      })
+
+      await refreshData()
+    } catch (err) {
+      console.error('Error al asignar transportista:', err)
+      throw err
+    }
+  }
+
+  const reportIncident = async (transferId: string, descripcion: string): Promise<void> => {
+    const t = transfers.find((x) => x.id === transferId)
+    if (!t || !t.db_id) return
+
+    if (!auth.user || auth.user.rol !== 'transportista') {
+      throw new Error('No autorizado: Solo los transportistas pueden reportar incidentes.')
+    }
+    if (Number(t.transportista_id) !== Number(auth.user.id)) {
+      throw new Error('No autorizado: Solo el transportista responsable asignado a esta transferencia puede reportar un incidente.')
+    }
+    if (!descripcion || !descripcion.trim()) {
+      throw new Error('La descripción del incidente es obligatoria.')
+    }
+
+    try {
+      const newObservacion = JSON.stringify({
+        prioridad: t.prioridad,
+        descripcion: t.descripcion,
+        descripcion_incidente: descripcion.trim(),
+      })
+
+      const { error: updateError } = await supabase
+        .from('transferencias')
+        .update({
+          estado: 'EN_TRANSITO_CON_INCIDENTE',
+          observacion: newObservacion,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', t.db_id)
+
+      if (updateError) throw updateError
+
+      await supabase.from('eventos_auditoria').insert({
+        transferencia_id: t.db_id,
+        usuario_id: auth.user.id,
+        accion: 'reportar_incidente',
+        descripcion: `Incidente reportado durante el transporte. Detalle: ${descripcion.trim()}`,
+      })
+
+      await refreshData()
+    } catch (err) {
+      console.error('Error al reportar incidente:', err)
+      throw err
+    }
+  }
+
   return (
     <TransferContext.Provider
       value={{
@@ -630,6 +987,11 @@ export function TransferProvider({ children }: { children: ReactNode }) {
         closeTransfer,
         errorTransfer,
         refreshData,
+        adjustStock,
+        cancelReserveTransfer,
+        assignCarrier,
+        getAvailableCarriers,
+        reportIncident,
       }}
     >
       {children}
