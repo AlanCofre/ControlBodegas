@@ -40,6 +40,11 @@ export interface Transfer {
   fecha_creacion: string
   fecha_actualizacion: string
   descripcion?: string
+  motivo_rechazo?: string
+  motivo_cancelacion_reserva?: string
+  transportista_id?: number
+  transportista_nombre?: string
+  descripcion_incidente?: string
   eventos: AuditEvent[]
 }
 

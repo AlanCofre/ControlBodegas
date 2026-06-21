@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTransferStore } from '../../../app/store/TransferContext'
 import { useAuth } from '../../../shared/auth/AuthContext'
@@ -88,15 +88,26 @@ const getActionButtons = (
   }
 
   if (
-    (status === 'APROBADA' || status === 'ERROR_RESERVA') &&
-    (currentRole === 'administrador' ||
-      currentRole === 'supervisor_bodega')
+    status === 'APROBADA' &&
+    (currentRole === 'administrador' || currentRole === 'operador_bodega')
   ) {
+    if (currentRole === 'operador_bodega') {
+      const isOriginWarehouse = Number(transfer.origen_id) === Number(user?.bodegaId)
+      if (!isOriginWarehouse) {
+        return []
+      }
+    }
+
     return [
       {
         label: 'Reservar',
         action: 'reserve',
         color: 'bg-blue-600 hover:bg-blue-700',
+      },
+      {
+        label: 'Cancelar Solicitud',
+        action: 'cancel_reserve',
+        color: 'bg-red-600 hover:bg-red-700',
       },
     ]
   }
@@ -107,6 +118,15 @@ const getActionButtons = (
       currentRole === 'operador_bodega' ||
       currentRole === 'transportista')
   ) {
+    if (currentRole === 'operador_bodega') {
+      const isOriginWarehouse = Number(transfer.origen_id) === Number(user?.bodegaId)
+      if (!isOriginWarehouse) {
+        return []
+      }
+    }
+    if (!transfer.transportista_id) {
+      return []
+    }
     return [
       {
         label: 'Despachar',
@@ -117,10 +137,30 @@ const getActionButtons = (
   }
 
   if (
+    status === 'EN_TRANSITO' &&
+    currentRole === 'transportista' &&
+    Number(transfer.transportista_id) === Number(user?.id)
+  ) {
+    return [
+      {
+        label: 'Reportar Incidente',
+        action: 'report_incident',
+        color: 'bg-red-600 hover:bg-red-700',
+      },
+    ]
+  }
+
+  if (
     (status === 'EN_TRANSITO' || status === 'EN_TRANSITO_CON_INCIDENTE') &&
     (currentRole === 'administrador' ||
       currentRole === 'operador_bodega')
   ) {
+    if (currentRole === 'operador_bodega') {
+      const isDestinationWarehouse = Number(transfer.destino_id) === Number(user?.bodegaId)
+      if (!isDestinationWarehouse) {
+        return []
+      }
+    }
     return [
       {
         label: 'Recibir',
@@ -151,7 +191,6 @@ export default function TransferDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const currentRole = user?.rol
   const {
     transfers,
     approveTransfer,
@@ -160,16 +199,54 @@ export default function TransferDetailPage() {
     dispatchTransfer,
     receiveTransfer,
     closeTransfer,
+    cancelReserveTransfer,
+    assignCarrier,
+    getAvailableCarriers,
+    reportIncident,
   } = useTransferStore()
 
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [showReceiveModal, setShowReceiveModal] = useState(false)
   const [quantityReceived, setQuantityReceived] = useState('')
+  const [showCancelReserveModal, setShowCancelReserveModal] = useState(false)
+  const [cancelReserveReason, setCancelReserveReason] = useState('Stock físico insuficiente')
+  const [cancelReserveReasonOtro, setCancelReserveReasonOtro] = useState('')
+  const [showIncidentModal, setShowIncidentModal] = useState(false)
+  const [incidentDescription, setIncidentDescription] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
+  const [availableCarriers, setAvailableCarriers] = useState<any[]>([])
+  const [selectedCarrierId, setSelectedCarrierId] = useState<string>('')
+  const [loadingCarriers, setLoadingCarriers] = useState(false)
+
   const transfer = transfers.find((t) => t.id === id)
+
+  const isOriginWarehouse = transfer?.origen_id && user && Number(transfer.origen_id) === Number(user.bodegaId)
+  const canAssignCarrier = !!(user && (user.rol === 'administrador' || (user.rol === 'operador_bodega' && isOriginWarehouse)))
+
+  useEffect(() => {
+    const fetchCarriers = async () => {
+      if (transfer && transfer.estado === 'RESERVADA' && !transfer.transportista_id && canAssignCarrier) {
+        setLoadingCarriers(true)
+        try {
+          const carriers = await getAvailableCarriers()
+          setAvailableCarriers(carriers)
+          if (carriers.length > 0) {
+            setSelectedCarrierId(String(carriers[0].id))
+          } else {
+            setSelectedCarrierId('')
+          }
+        } catch (err) {
+          console.error('Error al cargar transportistas:', err)
+        } finally {
+          setLoadingCarriers(false)
+        }
+      }
+    }
+    fetchCarriers()
+  }, [transfer?.id, transfer?.estado, transfer?.transportista_id, canAssignCarrier])
 
   if (!transfer) {
     return (
@@ -205,8 +282,14 @@ export default function TransferDetailPage() {
         case 'reserve':
           await reserveTransfer(transfer.id)
           break
+        case 'cancel_reserve':
+          setShowCancelReserveModal(true)
+          break
         case 'dispatch':
           await dispatchTransfer(transfer.id)
+          break
+        case 'report_incident':
+          setShowIncidentModal(true)
           break
         case 'receive':
           setShowReceiveModal(true)
@@ -217,6 +300,38 @@ export default function TransferDetailPage() {
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Error al ejecutar la acción')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleIncidentConfirm = async () => {
+    if (!incidentDescription.trim()) return
+    setActionLoading(true)
+    setErrorMessage('')
+    try {
+      await reportIncident(transfer.id, incidentDescription)
+      setShowIncidentModal(false)
+      setIncidentDescription('')
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error al reportar el incidente')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleCancelReserveConfirm = async () => {
+    const finalReason = cancelReserveReason === 'Otro' ? cancelReserveReasonOtro.trim() : cancelReserveReason
+    if (!finalReason) return
+    setActionLoading(true)
+    setErrorMessage('')
+    try {
+      await cancelReserveTransfer(transfer.id, finalReason)
+      setShowCancelReserveModal(false)
+      setCancelReserveReason('Stock físico insuficiente')
+      setCancelReserveReasonOtro('')
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error al cancelar la reserva')
     } finally {
       setActionLoading(false)
     }
@@ -360,6 +475,47 @@ export default function TransferDetailPage() {
                 </div>
               )}
             </div>
+
+            {transfer.descripcion && (
+              <div className="pt-2">
+                <p className="text-xs font-semibold uppercase text-gray-500">
+                  Observaciones
+                </p>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border border-gray-100 mt-1 whitespace-pre-wrap">
+                  {transfer.descripcion}
+                </p>
+              </div>
+            )}
+
+            {transfer.motivo_rechazo && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                <strong>Motivo de rechazo:</strong> {transfer.motivo_rechazo}
+              </div>
+            )}
+
+            {transfer.motivo_cancelacion_reserva && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800">
+                <strong>Motivo de cancelación de reserva (Diferencia física):</strong> {transfer.motivo_cancelacion_reserva}
+              </div>
+            )}
+
+            {transfer.transportista_nombre && (
+              <div className="pt-2 border-t border-gray-100 mt-2">
+                <p className="text-xs font-semibold uppercase text-gray-500">
+                  Transportista asignado
+                </p>
+                <p className="text-sm font-semibold text-gray-900 bg-purple-50 p-2 rounded border border-purple-100 mt-1 flex items-center gap-2">
+                  <span>🚚</span>
+                  <span>{transfer.transportista_nombre}</span>
+                </p>
+              </div>
+            )}
+
+            {transfer.descripcion_incidente && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 mt-2 animate-fade-in">
+                <strong>⚠️ Incidente Reportado:</strong> {transfer.descripcion_incidente}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -424,6 +580,74 @@ export default function TransferDetailPage() {
           ))}
         </div>
       </div>
+
+      {transfer.estado === 'RESERVADA' && !transfer.transportista_id && (
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6 shadow-sm">
+          <h2 className="mb-2 text-lg font-semibold text-yellow-800 flex items-center gap-2">
+            ⚠️ Asignación de Transportista Requerida
+          </h2>
+          <p className="mb-4 text-sm text-gray-700">
+            Esta transferencia se encuentra reservada. Debe asignarse un transportista disponible antes de registrar el despacho.
+          </p>
+
+          {canAssignCarrier ? (
+            <div className="space-y-4">
+              {loadingCarriers ? (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-yellow-600 border-t-transparent" />
+                  Buscando transportistas disponibles...
+                </div>
+              ) : availableCarriers.length === 0 ? (
+                <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 border border-red-200">
+                  No hay transportistas disponibles en este momento (todos se encuentran en tránsito en otras transferencias).
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-end gap-3 max-w-xl">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Transportistas disponibles:
+                    </label>
+                    <select
+                      value={selectedCarrierId}
+                      onChange={(e) => setSelectedCarrierId(e.target.value)}
+                      disabled={actionLoading}
+                      className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                    >
+                      {availableCarriers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre} ({c.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!selectedCarrierId) return
+                      setActionLoading(true)
+                      setErrorMessage('')
+                      try {
+                        await assignCarrier(transfer.id, Number(selectedCarrierId))
+                      } catch (err: any) {
+                        setErrorMessage(err.message || 'Error al asignar transportista')
+                      } finally {
+                        setActionLoading(false)
+                      }
+                    }}
+                    disabled={actionLoading || !selectedCarrierId}
+                    className="w-full sm:w-auto rounded-lg bg-yellow-600 hover:bg-yellow-700 px-4 py-2 font-medium text-white transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Asignar Transportista
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-md bg-gray-100 p-3 text-sm text-gray-700 border border-gray-200">
+              Solo un operador de la bodega origen ({transfer.origen}) o un administrador pueden asignar el transportista.
+            </div>
+          )}
+        </div>
+      )}
 
       {(actions.length > 0 || errorMessage) && (
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
@@ -537,6 +761,126 @@ export default function TransferDetailPage() {
               >
                 Confirmar recepción
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelReserveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl border border-gray-100">
+            <h3 className="mb-2 text-lg font-bold text-gray-900">
+              Cancelar Solicitud de Transferencia
+            </h3>
+            <p className="mb-4 text-sm text-gray-600">
+              Indique el motivo por el cual no se puede realizar la reserva de stock (diferencias físicas detectadas):
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Motivo *
+                </label>
+                <select
+                  value={cancelReserveReason}
+                  onChange={(e) => setCancelReserveReason(e.target.value)}
+                  disabled={actionLoading}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                >
+                  <option value="Stock físico insuficiente">Stock físico insuficiente</option>
+                  <option value="Diferencia de inventario detectada">Diferencia de inventario detectada</option>
+                  <option value="Producto no encontrado">Producto no encontrado</option>
+                  <option value="Producto dañado">Producto dañado</option>
+                  <option value="Error de registro de inventario">Error de registro de inventario</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              {cancelReserveReason === 'Otro' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Especifique el motivo *
+                  </label>
+                  <textarea
+                    value={cancelReserveReasonOtro}
+                    onChange={(e) => setCancelReserveReasonOtro(e.target.value)}
+                    disabled={actionLoading}
+                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                    rows={3}
+                    placeholder="Escriba el motivo detallado aquí..."
+                    required
+                  />
+                 </div>
+               )}
+
+               <div className="flex gap-3 pt-2">
+                 <button
+                   onClick={() => {
+                     setShowCancelReserveModal(false)
+                     setCancelReserveReason('Stock físico insuficiente')
+                     setCancelReserveReasonOtro('')
+                   }}
+                   disabled={actionLoading}
+                   className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
+                 >
+                   Cancelar
+                 </button>
+                 <button
+                   onClick={handleCancelReserveConfirm}
+                   disabled={actionLoading || (cancelReserveReason === 'Otro' && !cancelReserveReasonOtro.trim())}
+                   className="flex-1 rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                 >
+                   Confirmar
+                 </button>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
+
+      {showIncidentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl border border-gray-100">
+            <h3 className="mb-2 text-lg font-bold text-gray-900">
+              Reportar Incidente en Ruta
+            </h3>
+            <p className="mb-4 text-sm text-gray-600">
+              Describa en detalle el problema ocurrido durante el transporte. Esta información quedará registrada en la bitácora de auditoría y la transferencia pasará a estado con incidente:
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descripción del Incidente *
+                </label>
+                <textarea
+                  value={incidentDescription}
+                  onChange={(e) => setIncidentDescription(e.target.value)}
+                  disabled={actionLoading}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-white"
+                  rows={4}
+                  placeholder="Ej: Avería mecánica en ruta, retraso de 2 horas..."
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowIncidentModal(false)
+                    setIncidentDescription('')
+                  }}
+                  disabled={actionLoading}
+                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleIncidentConfirm}
+                  disabled={actionLoading || !incidentDescription.trim()}
+                  className="flex-1 rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                >
+                  Confirmar Incidente
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -42,6 +42,10 @@ export default function AuditPage() {
         return 'bg-red-100 text-red-800'
       case 'reservar_stock':
         return 'bg-cyan-100 text-cyan-800'
+      case 'asignar_transportista':
+        return 'bg-sky-100 text-sky-800'
+      case 'reportar_incidente':
+        return 'bg-pink-100 text-pink-800 border border-pink-300'
       case 'registrar_despacho':
         return 'bg-purple-100 text-purple-800'
       case 'registrar_recepcion':
@@ -50,6 +54,8 @@ export default function AuditPage() {
         return 'bg-emerald-100 text-emerald-800'
       case 'error_reserva':
         return 'bg-red-100 text-red-800'
+      case 'ajuste_manual':
+        return 'bg-amber-100 text-amber-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -65,6 +71,10 @@ export default function AuditPage() {
         return 'Rechazo'
       case 'reservar_stock':
         return 'Reserva'
+      case 'asignar_transportista':
+        return 'Asignación de Transportista'
+      case 'reportar_incidente':
+        return 'Incidente en Ruta'
       case 'registrar_despacho':
         return 'Despacho'
       case 'registrar_recepcion':
@@ -73,6 +83,8 @@ export default function AuditPage() {
         return 'Cierre'
       case 'error_reserva':
         return 'Error de Reserva'
+      case 'ajuste_manual':
+        return 'Ajuste Manual'
       default:
         return action
     }
@@ -151,9 +163,13 @@ export default function AuditPage() {
                       {formatDate(log.timestamp)}
                     </td>
                     <td className="px-4 py-4 text-sm font-semibold text-gray-900 whitespace-nowrap">
-                      <Link to={`/transfers/${log.transferencia_id}`} className="text-blue-600 hover:text-blue-800">
-                        {log.transferencia_id}
-                      </Link>
+                      {log.transferencia_id && log.transferencia_id !== 'N/A' && log.transferencia_id !== 'null' ? (
+                        <Link to={`/transfers/${log.transferencia_id}`} className="text-blue-600 hover:text-blue-800">
+                          {log.transferencia_id}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400 font-normal">N/A</span>
+                      )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${getActionBadgeColor(log.accion)}`}>

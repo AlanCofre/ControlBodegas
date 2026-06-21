@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import { supabase, seedDatabaseIfNeeded } from '../utils/supabaseClient'
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react'
+import { supabase } from '../utils/supabaseClient'
 
 export type UserRole =
   | 'administrador'
@@ -26,11 +26,11 @@ interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null
   isAuthenticated: boolean
-  dbUsers: DbUser[]
-  loadingUsers: boolean
-  login: (userId: number) => Promise<void>
-  logout: () => void
-  refreshDbUsers: () => Promise<void>
+  loadingSession: boolean
+  login: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, nombre: string, rolId: number, bodegaId?: number | null) => Promise<void>
+  logout: () => Promise<void>
+  signOut: () => Promise<void>
 }
 
 // Normaliza los nombres de roles de la base de datos a los tipos del frontend
@@ -51,19 +51,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [dbUsers, setDbUsers] = useState<DbUser[]>([])
-  const [loadingUsers, setLoadingUsers] = useState<boolean>(true)
+  const [loadingSession, setLoadingSession] = useState<boolean>(true)
+  const userRef = useRef<AuthUser | null>(null)
 
-  const refreshDbUsers = async () => {
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
+
+  const fetchUserProfile = async (authUserId: string) => {
     try {
-      setLoadingUsers(true)
-      // Aseguramos que la BD esté seedeadada
-      await seedDatabaseIfNeeded()
-
-      const { data: dbRolesLog } = await supabase.from('roles').select('*')
-      console.log('--- DEBUG DE BASE DE DATOS ---')
-      console.log('Roles en Supabase:', dbRolesLog)
-
       const { data, error } = await supabase
         .from('usuarios')
         .select(`
@@ -75,96 +71,114 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             nombre
           )
         `)
+        .eq('auth_user_id', authUserId)
         .eq('activo', true)
+        .single()
 
       if (error) throw error
 
-      console.log('Usuarios cargados de Supabase:', data)
-
       if (data) {
-        const mapped: DbUser[] = data.map((u: any) => {
-          const rawRole = u.roles ? (Array.isArray(u.roles) ? u.roles[0]?.nombre : u.roles.nombre) : ''
-          return {
-            id: Number(u.id),
-            nombre: u.nombre,
-            rol: normalizeRole(rawRole),
-            email: u.email,
-            bodegaId: u.bodega_id ? Number(u.bodega_id) : null,
-          }
+        const u = data as any
+        const rawRole = u.roles ? (Array.isArray(u.roles) ? u.roles[0]?.nombre : u.roles.nombre) : ''
+        setUser({
+          id: Number(u.id),
+          nombre: u.nombre,
+          rol: normalizeRole(rawRole),
+          email: u.email,
+          bodegaId: u.bodega_id ? Number(u.bodega_id) : null,
         })
-        setDbUsers(mapped)
+      } else {
+        setUser(null)
       }
     } catch (err) {
-      console.error('Error al cargar los usuarios desde Supabase:', err)
-    } finally {
-      setLoadingUsers(false)
+      console.error('Error al cargar el perfil del usuario desde la base de datos:', err)
+      setUser(null)
     }
   }
 
   useEffect(() => {
-    refreshDbUsers()
+    const initSession = async () => {
+      try {
+        setLoadingSession(true)
+
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          await fetchUserProfile(session.user.id)
+        } else {
+          setUser(null)
+        }
+      } catch (err) {
+        console.error('Error al inicializar sesión:', err)
+      } finally {
+        setLoadingSession(false)
+      }
+    }
+
+    initSession()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        // Evitar recargar perfil si es un refresco de token y ya tenemos el usuario en memoria
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || !userRef.current) {
+          await fetchUserProfile(session.user.id)
+        }
+      } else {
+        setUser(null)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
-  const login = async (userId: number) => {
-    try {
-      const selectedUser = dbUsers.find((u) => u.id === userId)
-      if (selectedUser) {
-        setUser({
-          id: selectedUser.id,
-          nombre: selectedUser.nombre,
-          rol: selectedUser.rol,
-          email: selectedUser.email,
-          bodegaId: selectedUser.bodegaId,
-        })
-        return
-      }
-
-      // Si por alguna razón no está en la lista de dbUsers cargados, consultamos a Supabase
-      const { data, error } = await supabase
-        .from('usuarios')
-        .select(`
-          id,
-          nombre,
-          email,
-          bodega_id,
-          roles!rol_id (
-            nombre
-          )
-        `)
-        .eq('id', userId)
-        .single()
-
-      if (error || !data) throw new Error('Usuario no encontrado en la base de datos')
-
-      const userData = data as any
-      const rawRole = userData.roles ? (Array.isArray(userData.roles) ? userData.roles[0]?.nombre : userData.roles.nombre) : ''
-      setUser({
-        id: Number(userData.id),
-        nombre: userData.nombre,
-        rol: normalizeRole(rawRole),
-        email: userData.email,
-        bodegaId: userData.bodega_id ? Number(userData.bodega_id) : null,
-      })
-    } catch (error) {
-      console.error('Error durante el login en Supabase:', error)
-      throw error
-    }
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    if (error) throw error
   }
 
-  const logout = () => {
+  const signUp = async (
+    email: string,
+    password: string,
+    nombre: string,
+    rolId: number,
+    bodegaId?: number | null
+  ) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          nombre,
+          rol_id: rolId,
+          bodega_id: bodegaId || null,
+        },
+      },
+    })
+    if (error) throw error
+  }
+
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
     setUser(null)
   }
+
+  const logout = signOut
 
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated: !!user,
-        dbUsers,
-        loadingUsers,
+        loadingSession,
         login,
+        signUp,
         logout,
-        refreshDbUsers,
+        signOut,
       }}
     >
       {children}
