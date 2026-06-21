@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import type { Transfer, AuditEvent, Priority, TransferStatus, UserRole } from '../../modules/transferencias/types'
-import { supabase, seedDatabaseIfNeeded } from '../../shared/utils/supabaseClient'
+import { supabase } from '../../shared/utils/supabaseClient'
 import { useAuth, type DbUser, normalizeRole } from '../../shared/auth/AuthContext'
 
 interface TransferContextType {
@@ -262,7 +262,6 @@ export function TransferProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
       setLoading(true)
-      await seedDatabaseIfNeeded()
       await refreshData()
       setLoading(false)
     }
@@ -633,12 +632,13 @@ export function TransferProvider({ children }: { children: ReactNode }) {
         diferencia: diferencia,
       })
 
-      // 4. Modificar estado de la transferencia
+      // 4. Modificar estado de la transferencia y liberar al transportista
       await supabase
         .from('transferencias')
         .update({
           estado: estadoNuevo,
           observacion: observacionJson,
+          transportista_id: null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', t.db_id)
@@ -854,7 +854,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
       const { data: activeTransfers, error: transError } = await supabase
         .from('transferencias')
         .select('transportista_id')
-        .eq('estado', 'EN_TRANSITO')
+        .in('estado', ['RESERVADA', 'EN_TRANSITO', 'EN_TRANSITO_CON_INCIDENTE'])
         .not('transportista_id', 'is', null)
 
       if (transError) {

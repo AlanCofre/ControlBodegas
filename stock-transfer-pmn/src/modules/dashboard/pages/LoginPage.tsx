@@ -1,108 +1,97 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../../shared/auth/AuthContext'
 
 export default function LoginPage() {
-  const { dbUsers, loadingUsers, login } = useAuth()
-  const [selectedUserId, setSelectedUserId] = useState<string>('')
+  const { login } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [submitLoading, setSubmitLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-
-  useEffect(() => {
-    if (dbUsers.length > 0 && !selectedUserId) {
-      setSelectedUserId(String(dbUsers[0].id))
-    }
-  }, [dbUsers, selectedUserId])
-
-  const getRoleLabel = (role: string) => {
-    const labels: Record<string, string> = {
-      administrador: 'Administrador',
-      supervisor_bodega: 'Supervisor de Bodega',
-      operador_bodega: 'Operador de Bodega',
-      transportista: 'Transportista'
-    }
-    return labels[role] || role
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!selectedUserId) {
-      setErrorMsg('Por favor seleccione un usuario para ingresar')
+    if (!email || !password) {
+      setErrorMsg('Por favor ingrese su correo electrónico y contraseña')
       return
     }
 
     setSubmitLoading(true)
     setErrorMsg('')
     try {
-      await login(Number(selectedUserId))
+      await login(email.trim(), password)
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error al iniciar sesión')
+      console.error('Error de login:', err)
+      setErrorMsg(err.message || 'Credenciales inválidas o error de conexión')
       setSubmitLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-xl bg-white p-8 shadow-md"
-      >
-        <h1 className="mb-2 text-2xl font-bold text-gray-900">
-          Control de Bodegas
-        </h1>
-        <p className="mb-6 text-sm text-gray-600">
-          Selecciona tu usuario de base de datos para ingresar
-        </p>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-950 via-slate-900 to-slate-950 px-4">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white">
+            Control de Bodegas
+          </h1>
+          <p className="mt-2 text-sm text-blue-200/80">
+            Ingresa tus credenciales para acceder al sistema
+          </p>
+        </div>
 
         {errorMsg && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">
             {errorMsg}
           </div>
         )}
 
-        <div className="mb-6">
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Usuario del Sistema *
-          </label>
-          {loadingUsers ? (
-            <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-500 bg-gray-50">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-              Cargando usuarios de la base de datos...
-            </div>
-          ) : (
-            <select
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-white/95">
+              Correo Electrónico
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               disabled={submitLoading}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
-            >
-              {dbUsers.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre} - ({getRoleLabel(u.rol)})
-                </option>
-              ))}
-              {dbUsers.length === 0 && (
-                <option value="">No hay usuarios en la base de datos</option>
-              )}
-            </select>
-          )}
-        </div>
+              placeholder="ejemplo@controlbodegas.com"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-white/35 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              required
+            />
+          </div>
 
-        <button
-          type="submit"
-          disabled={loadingUsers || submitLoading || dbUsers.length === 0}
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {submitLoading ? (
-            <>
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              Ingresando...
-            </>
-          ) : (
-            'Ingresar'
-          )}
-        </button>
-      </form>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-white/95">
+              Contraseña
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={submitLoading}
+              placeholder="••••••••"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-white/35 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitLoading}
+            className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {submitLoading ? (
+              <>
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Iniciando sesión...
+              </>
+            ) : (
+              'Ingresar'
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

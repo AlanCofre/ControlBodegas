@@ -13,7 +13,18 @@ import TransferDetailPage from './modules/transferencias/pages/TransferDetailPag
 import InventoryPage from './modules/inventario/pages/InventoryPage'
 
 function AppContent() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, loadingSession } = useAuth()
+
+  if (loadingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-950 via-slate-900 to-slate-950">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+          <p className="text-sm font-medium text-blue-200/80">Validando sesión...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!isAuthenticated) {
     return <LoginPage />
