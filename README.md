@@ -2,515 +2,275 @@
 
 ## Descripción del Proyecto
 
-Este proyecto consiste en el desarrollo de un **Prototipo Mínimo Navegable (PMN)** para un sistema de gestión de transferencias de stock entre bodegas.
+Este proyecto consiste en el desarrollo de un **Prototipo Mínimo Viable (PMV)** completamente funcional para un sistema de gestión de transferencias de stock entre bodegas.
 
-El objetivo principal del prototipo NO es construir un sistema productivo completo ni una solución técnicamente final, sino desarrollar una aplicación navegable que permita:
+A diferencia de un prototipo puramente estático o simulado, este PMV está integrado directamente con un backend real basado en **Supabase** (Base de Datos PostgreSQL, Autenticación y Triggers), lo que permite:
 
-- recorrer el flujo operacional completo,
-- visualizar estados y decisiones,
-- interactuar con el sistema,
-- comprender cómo funcionaría realmente,
-- demostrar la lógica del negocio,
-- representar escenarios críticos y excepciones,
-- mostrar trazabilidad y consistencia operacional.
+- Recorrer el flujo operacional completo con datos persistentes y reales.
+- Gestionar usuarios, sesiones y roles de acceso reales.
+- Realizar validaciones de stock directas contra la base de datos.
+- Registrar un historial de auditoría inmutable de todas las acciones del sistema.
+- Mostrar la trazabilidad física y consistencia del inventario entre múltiples bodegas.
 
-El foco principal del proyecto está en el **flujo operacional y la experiencia del sistema**, no en la complejidad del backend ni en la infraestructura.
+El foco del proyecto está en **demostrar la lógica operacional, control empresarial y consistencia del negocio** sobre una arquitectura robusta y moderna.
 
 ---
 
-# Objetivo del PMN
+# Objetivo del PMV
 
-El PMN debe permitir que un usuario pueda:
+El PMV permite realizar las siguientes operaciones reales:
 
-- navegar entre pantallas,
-- crear solicitudes de transferencia,
-- visualizar validaciones,
-- aprobar/rechazar solicitudes,
-- simular reservas de stock,
-- recorrer cambios de estado,
-- visualizar auditoría y trazabilidad,
-- comprender cómo operaría el sistema en un entorno real.
-
-El sistema debe transmitir sensación de:
-
-- control operacional,
-- trazabilidad,
-- consistencia,
-- flujo empresarial,
-- toma de decisiones,
-- manejo de excepciones.
+- **Autenticación e Identidad**: Inicio de sesión con credenciales, registro de nuevos usuarios y asignación de roles de negocio (Supervisor, Operador, Transportista, Administrador).
+- **Gestión de Transferencias**: Crear solicitudes de transferencia, validando de forma interactiva la existencia y disponibilidad de stock en la bodega origen.
+- **Flujo de Decisiones**: Flujo completo de aprobación/rechazo por parte de supervisores, reserva de stock, despacho y recepción física.
+- **Resolución de Diferencias**: Registro de recepción que calcula de forma automática discrepancias de stock y genera alertas.
+- **Control y Auditoría**: Registro persistente y detallado de cada acción del flujo operacional con trazabilidad de actores y marcas de tiempo.
+- **Ajustes de Inventario**: Permite a los supervisores realizar ajustes manuales directos en el stock, justificando y auditando la acción.
 
 ---
 
-# Alcance del Prototipo
+# Alcance del PMV
 
-## El PMN SÍ debe incluir
+## Componentes Incluidos
 
-- Navegación funcional entre pantallas
-- Flujo completo principal
-- Simulación de lógica de negocio
-- Estados de transferencia
-- Visualización de inventario
-- Feedback visual de operaciones
-- Simulación de validaciones
-- Trazabilidad visual
-- Manejo de excepciones importantes
-- Persistencia temporal simulada
-- Roles básicos simulados
+- **Backend Integrado**: Base de datos relacional y sistema de autenticación persistente.
+- **Gestión de Sesiones**: Autenticación persistente y vinculación automática de usuarios de Supabase Auth a perfiles públicos (`usuarios`).
+- **Control de Inventario**: Consulta, reserva y descuento automático de stock en las bodegas según el flujo de la transferencia.
+- **Seguridad por Roles**: Restricciones a nivel de UI y lógica de negocio según el rol asignado (ej. solo el operador de la bodega origen puede realizar la reserva de stock).
+- **Consistencia y Concurrencia**: Control de stock concurrente a nivel de base de datos para prevenir inconsistencias.
+- **Historial de Auditoría**: Visualización interactiva y filtro de logs de auditoría en tiempo real.
 
----
+## Fuera de Alcance en esta Etapa
 
-## El PMN NO necesita incluir
-
-- Backend real complejo
-- Seguridad avanzada
-- Autenticación robusta
-- Base de datos real
-- Concurrencia real multinodo
-- Microservicios
-- APIs productivas completas
-- Optimización de rendimiento
-- Infraestructura enterprise
-- Diseño visual perfecto
+- Integraciones con sistemas ERP de terceros (SAP, Oracle, etc.).
+- Control físico automatizado (lectores de código de barras, integración con WMS externo).
+- Algoritmos avanzados de optimización de rutas para transportistas.
+- Infraestructura empresarial compleja en servidores dedicados (se aprovecha el modelo serverless de Supabase).
 
 ---
 
 # Estrategia Tecnológica
 
-## Enfoque General
+## Integración Directa con Backend Serverless (Supabase)
 
-Se decidió utilizar una arquitectura:
+La lógica del sistema reside en el frontend (React + TypeScript) y se integra directamente con Supabase para el almacenamiento relacional de datos y la autenticación de usuarios. Las reglas operacionales se validan tanto en el cliente como mediante la lógica de base de datos y disparadores (triggers) SQL.
 
-## Frontend-first con backend simulado
-
-La lógica y experiencia del sistema serán desarrolladas principalmente en frontend, simulando comportamiento backend mediante mocks y servicios internos.
-
-La arquitectura quedará preparada para integrar backend real en etapas futuras.
+Esta arquitectura es ideal para escalar de forma rápida sin necesidad de un backend personalizado complejo (como Java/Spring Boot) en etapas tempranas.
 
 ---
 
-# Tecnologías Seleccionadas
+# Stack Tecnológico
 
-## Frontend
+El proyecto está construido con herramientas modernas de alto rendimiento:
 
-| Tecnología | Propósito |
-|---|---|
-| React | Construcción de la aplicación |
-| Vite | Entorno de desarrollo |
-| TypeScript | Tipado y estructura |
-| Tailwind CSS | Estilos |
-| React Router | Navegación |
-| Context API | Estado global simple |
-| Axios | Futuras conexiones HTTP |
-| shadcn/ui | Componentes UI reutilizables |
+### Core Frameworks & Tools
+| Tecnología | Propósito | Versión / Detalle |
+|---|---|---|
+| **React** | Biblioteca principal para la interfaz de usuario | v19 |
+| **Vite** | Herramienta de compilación y servidor local ultra rápido | v8.0 |
+| **TypeScript** | Programación con tipado estricto para evitar errores | v6.0 |
+| **Tailwind CSS** | Estilizado y diseño moderno responsivo | v4.3 |
+| **React Router** | Enrutamiento e historial de navegación | v7.15 |
+| **Context API** | Gestión de estado global y sincronización de datos | React Core |
 
----
-
-# ¿Por qué React?
-
-Se eligió React porque:
-
-- facilita construir aplicaciones navegables,
-- permite reutilizar componentes,
-- simplifica el manejo de estados visuales,
-- la IA genera muy buen soporte para React,
-- es ideal para dashboards y sistemas empresariales.
+### Backend & Persistencia (BaaS)
+| Servicio/Herramienta | Propósito | Versión / Detalle |
+|---|---|---|
+| **Supabase Auth** | Autenticación robusta y gestión de sesiones | Supabase |
+| **PostgreSQL** | Base de datos relacional para consistencia e inventarios | Supabase |
+| **SQL Triggers** | Creación y vinculación automatizada de perfiles públicos | PL/pgSQL |
+| **Supabase Client SDK** | Conector oficial para consultas y persistencia de datos | `@supabase/supabase-js` |
 
 ---
 
-# ¿Por qué TypeScript?
+# Instalación y Setup
 
-El sistema posee:
+Para ejecutar la aplicación en tu entorno de desarrollo local, asegúrate de contar con **Node.js** (v18 o superior) y **npm** (v10 o superior).
 
-- muchos estados,
-- múltiples entidades,
-- reglas operacionales,
-- cambios de estado complejos.
+### 1. Clonar el repositorio
+```bash
+git clone <repo-url>
+cd ControlBodegas
+```
 
-TypeScript ayuda a:
+### 2. Configurar variables de entorno
+Crea un archivo `.env` o `.env.development` dentro de la carpeta `stock-transfer-pmn/` con las credenciales de tu proyecto de Supabase:
+```env
+VITE_SUPABASE_URL=https://tu-proyecto-supabase.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=tu-anon-key-publica
+```
 
-- evitar errores,
-- estructurar mejor el proyecto,
-- mantener consistencia,
-- facilitar integración futura del backend.
+### 3. Instalar dependencias
+```bash
+cd stock-transfer-pmn
+npm install
+```
+
+### 4. Inicializar base de datos (Supabase Editor SQL)
+Si estás configurando un nuevo entorno de Supabase, ejecuta el script localizado en la raíz del repositorio [supabase_setup.sql](file:///c:/Users/alanp/Repositorios/ControlBodegas/supabase_setup.sql) en el editor SQL de Supabase para configurar el trigger automático que enlaza los usuarios de Auth con la tabla pública de `usuarios`.
+
+### 5. Ejecutar la aplicación
+```bash
+npm run dev
+```
+El servidor levantará en `http://localhost:5173`.
+
+### Scripts Disponibles
+Ejecuta estos comandos en la carpeta `/stock-transfer-pmn`:
+- `npm run dev`: Servidor de desarrollo con recarga en caliente (HMR).
+- `npm run build`: Compilación de producción (archivos optimizados en `/dist`).
+- `npm run lint`: Ejecución de análisis estático del código con ESLint.
+- `npm run preview`: Vista previa local del build de producción generado.
 
 ---
 
-# Arquitectura del Proyecto
+# Arquitectura y Estructura del Proyecto
 
-## Enfoque Arquitectónico
-
-Se utilizará una:
-
-## Arquitectura modular por dominio
-
-La estructura del sistema representará capacidades del negocio y NO tecnologías.
-
-Esto permitirá:
-
-- escalabilidad futura,
-- separación de responsabilidades,
-- integración sencilla de backend,
-- mantenimiento más simple.
-
----
-
-# Estructura del Proyecto
+El código está estructurado bajo una **arquitectura modular por dominio** que separa claramente las responsabilidades del negocio:
 
 ```text
 src/
 │
 ├── app/
-│   ├── routes/
-│   ├── layouts/
-│   ├── providers/
-│   └── store/
+│   ├── routes/      # Rutas de la aplicación (React Router)
+│   ├── layouts/     # Estructura visual principal (ej. MainLayout)
+│   ├── providers/   # Proveedores generales
+│   └── store/       # Proveedor central de datos y contexto (TransferContext)
 │
-├── modules/
+├── modules/         # Módulos de negocio independientes (autocontenidos)
 │   │
-│   ├── transferencias/
-│   │   ├── components/
+│   ├── dashboard/   # Dashboard de métricas, estadísticas e inicio de sesión
+│   │
+│   ├── transferencias/ # Flujos de creación, detalle y aprobación de transferencias
 │   │   ├── pages/
-│   │   ├── services/
-│   │   ├── hooks/
-│   │   ├── mocks/
-│   │   ├── utils/
-│   │   ├── state/
-│   │   └── types/
+│   │   ├── components/
+│   │   ├── types/
+│   │   └── index.ts
 │   │
-│   ├── inventario/
+│   ├── inventario/  # Consulta y ajustes de stock en bodegas en tiempo real
 │   │
-│   ├── auditoria/
+│   ├── auditoria/   # Panel de eventos y logs operacionales
 │   │
-│   ├── dashboard/
-│   │
-│   └── autenticacion/
+│   └── autenticacion/# Autenticación de usuarios y perfiles
 │
-├── shared/
-│   ├── components/
-│   ├── ui/
-│   ├── hooks/
-│   ├── utils/
-│   ├── constants/
-│   └── types/
+├── shared/          # Código común compartido entre múltiples módulos
+│   ├── auth/        # Contexto de autenticación integrado con Supabase (AuthContext)
+│   ├── components/  # Componentes transversales
+│   ├── ui/          # Elementos básicos de UI (shadcn/ui, botones, diálogos)
+│   ├── utils/       # Funciones auxiliares y cliente de Supabase (supabaseClient)
+│   └── types/       # Tipos globales
 │
-├── assets/
+├── assets/          # Imágenes y recursos estáticos
 │
-└── main.tsx
+└── main.tsx         # Punto de entrada de React
 ```
 
 ---
 
-# Flujo Principal Priorizado
+## 🔄 Estructura Interna de Módulos
 
-El sistema priorizará UN flujo principal bien construido.
-
-## Flujo principal seleccionado
+Cada módulo sigue un patrón autocontenido para mantener la modularidad y separación de responsabilidades:
 
 ```text
-Dashboard
+modulo/
+├── pages/          # Componentes de página (vistas principales)
+├── components/     # Componentes locales del módulo
+├── hooks/          # Hooks personalizados del módulo
+├── services/       # Servicios de API y comunicación
+├── state/          # Gestión de estado local (Zustand, Context local)
+├── types/          # Definiciones de tipo TypeScript para el dominio
+├── utils/          # Funciones auxiliares del módulo
+├── constants/      # Constantes exclusivas del módulo
+├── mocks/          # Datos simulados para desarrollo/pruebas
+├── schemas/        # Esquemas de validación de formularios/datos
+├── index.ts        # Exportaciones públicas del módulo (punto de entrada)
+└── README.md       # Documentación local del módulo
+```
+
+---
+
+# Convenciones de Código y Estilo
+
+- **Componentes React**: Nombre en PascalCase (ej: `DashboardPage.tsx`, `TransferDetail.tsx`).
+- **Funciones y Variables**: Nombre en camelCase (ej: `formatDate.ts`, `obtenerTransferencias`).
+- **Interfaces y Tipos**: Nombre en PascalCase (ej: `Transfer.ts`, `WarehouseType`).
+- **Constantes**: Nombre en UPPER_SNAKE_CASE (ej: `TRANSFER_STATUS.ts`).
+- **Importaciones type-only**: Usar la sintaxis `import type` para importar tipos de TypeScript (TS 5.0+), reduciendo el tamaño final del bundle compilado.
+
+---
+
+# Flujo Principal de Transferencias
+
+El sistema sigue un flujo rígido de estados operacionales para garantizar la consistencia física del inventario:
+
+```text
+CREADA (Solicitud registrada por Supervisor)
    ↓
-Crear solicitud
+APROBADA (Aprobada por Supervisor de la bodega origen)
    ↓
-Selección de bodega
+RESERVADA (Operador de origen bloquea el stock disponible en inventario)
    ↓
-Validación de stock
+EN_TRANSITO (Operador registra el despacho y asigna transportista)
    ↓
-Aprobación supervisor
+RECIBIDA / CON_DIFERENCIA (Operador de destino registra la cantidad recibida)
    ↓
-Reserva de stock
-   ↓
-Despacho
-   ↓
-Recepción
-   ↓
-Cierre
+CERRADA (Cierre formal de la transferencia)
 ```
 
 ---
 
 # Estados del Sistema
 
-Los estados principales serán:
-
-```text
-CREADA
-APROBADA
-RESERVADA
-EN_TRANSITO
-RECIBIDA
-CON_DIFERENCIA
-RECHAZADA
-CERRADA
-SIN_ORIGEN_DISPONIBLE
-ERROR_RESERVA
-```
+El flujo completo de estados mapeado en base de datos es:
+- `CREADA`: Solicitud inicial creada.
+- `APROBADA`: Aprobación técnica del supervisor origen.
+- `RESERVADA`: Stock bloqueado físicamente en origen.
+- `EN_TRANSITO`: Carga despachada de bodega origen.
+- `RECIBIDA_SIN_DIFERENCIA` o `CON_DIFERENCIA`: Recepción en destino, con o sin inconsistencias.
+- `RECHAZADA`: Solicitud denegada por supervisor.
+- `ERROR_RESERVA`: Fallo al intentar reservar (ej. por falta de stock repentino).
+- `CERRADA`: Operación finalizada.
 
 ---
 
-# Qué Debe Demostrar el Sistema
+# Concurrencia y Consistencia de Stock
 
-El PMN debe demostrar:
-
-- flujo operacional coherente,
-- cambios de estado claros,
-- simulación de concurrencia,
-- consistencia conceptual del inventario,
-- trazabilidad,
-- auditoría,
-- manejo de excepciones,
-- interacción entre actores.
+El PMV implementa lógica transaccional para evitar inconsistencias de inventario en operaciones concurrentes:
+1. **Validación de Disponibilidad**: Antes de reservar stock, se realiza una consulta directa a la base de datos de Supabase.
+2. **Reserva Atómica**: Al ejecutar `reserveTransfer`, se reduce de forma inmediata el campo `stock_disponible` y se incrementa el campo `stock_reservado` en la tabla `inventario` en una única transacción de actualización.
+3. **Manejo de Errores de Reserva**: Si el stock disponible en la base de datos es menor a la cantidad solicitada (debido a otra transacción concurrente), la operación falla con una excepción y la transferencia cambia automáticamente a `ERROR_RESERVA`.
+4. **Descuento Físico**: Al recibir la mercadería en destino, se elimina el stock reservado de la bodega origen y se agrega el stock real disponible a la bodega destino.
 
 ---
 
-# Concurrencia y Consistencia
+# Integración con Backend (Supabase)
 
-Aunque el PMN NO implementará concurrencia real, sí debe simular visualmente:
-
-- bloqueos de stock,
-- reintentos,
-- stock insuficiente,
-- reservas concurrentes,
-- fallos de validación.
-
-Ejemplo visual esperado:
-
-```text
-Validando stock...
-Bloqueando inventario...
-Stock actualizado por otra operación.
-Reserva fallida.
-```
+El sistema se conecta a una base de datos PostgreSQL estructurada en Supabase:
+- **`usuarios`**: Contiene la información de nombre, email, rol corporativo y bodega asignada. Vinculado por `auth_user_id` a la tabla de autenticación.
+- **`bodegas`**: Listado de centros de distribución de la empresa.
+- **`productos`**: Catálogo maestro de productos con códigos SKU.
+- **`inventario`**: Tabla puente de stock por bodega (`bodega_id`, `producto_id`, `stock_disponible`, `stock_reservado`).
+- **`transferencias`**: Contiene el estado, cantidad, origen, destino, transportista y solicitante de cada transferencia.
+- **`eventos_auditoria`**: Log persistente de eventos del sistema para trazabilidad.
 
 ---
 
-# Simulación de Backend
+# Estado de Implementación del Proyecto
 
-El sistema utilizará:
+El PMV ha completado la totalidad de sus módulos centrales planificados:
 
-- mocks,
-- JSON locales,
-- servicios simulados.
-
-Ejemplo:
-
-```ts
-export async function obtenerTransferencias() {
-   return mockTransferencias;
-}
-```
-
-Esto permitirá reemplazar posteriormente por:
-
-```ts
-export async function obtenerTransferencias() {
-   return axios.get("/api/transferencias");
-}
-```
-
-sin modificar la interfaz.
+- [x] **Autenticación Real**: Login persistente por Supabase Auth, cierre de sesión y redirección basada en roles de usuario (`administrador`, `supervisor_bodega`, `operador_bodega`, `transportista`).
+- [x] **Dashboard de Operaciones**: Métricas dinámicas, totalizadores de transferencias y accesos directos operacionales filtrados por el contexto de bodega del usuario.
+- [x] **Gestión de Transferencias**: Creación, validación interactiva de stock de origen, aprobación por parte del supervisor del centro emisor.
+- [x] **Gestión de Inventario**: Vistas detalladas del stock de cada producto en la bodega activa, permitiendo ajustes manuales autorizados (con auditoría persistente obligatoria).
+- [x] **Auditoría Centralizada**: Visualización y filtros detallados de la tabla `eventos_auditoria`.
+- [x] **Lógica de Reserva, Despacho y Recepción**: Flujo transaccional completo con actualización de stocks físicos en origen y destino, cálculo automático de diferencias y asignación de transportistas en tiempo real.
 
 ---
 
-# Estructura Preparada para Backend Futuro
-
-Aunque inicialmente NO existirá backend real, el frontend quedará preparado para futura integración.
-
-## Posible estructura futura
-
-```text
-backend/
- ├── transferencias/
- ├── inventario/
- ├── auditoria/
- ├── auth/
-```
-
----
-
-# Backend Futuro Considerado
-
-En futuras etapas podría integrarse:
-
-| Tecnología | Uso futuro |
-|---|---|
-| Spring Boot | Backend |
-| PostgreSQL | Base de datos |
-| JPA/Hibernate | Persistencia |
-| JWT | Seguridad |
-| Docker | Contenedores |
-
-> IMPORTANTE:
-> Estas tecnologías NO son prioridad en el PMN actual.
-
----
-
-# Diseño de la Interfaz
-
-El sistema tendrá enfoque:
-
-## ERP / Sistema empresarial
-
-Priorizando:
-
-- claridad operacional,
-- paneles,
-- tablas,
-- badges de estado,
-- trazabilidad,
-- navegación rápida.
-
-NO se priorizará:
-
-- diseño artístico,
-- animaciones complejas,
-- experiencia móvil avanzada.
-
----
-
-# Componentes Importantes
-
-## Pantallas principales esperadas
-
-- Dashboard
-- Lista de transferencias
-- Crear transferencia
-- Detalle de transferencia
-- Validación de stock
-- Aprobación supervisor
-- Auditoría
-- Inventario
-
----
-
-# Principios del Proyecto
-
-## Lo más importante
-
-El foco del sistema es:
-
-## representar correctamente el flujo operacional.
-
-NO construir infraestructura compleja innecesaria.
-
----
-
-# Decisiones Técnicas Importantes
-
-## Se decidió NO utilizar inicialmente
-
-- Microservicios
-- Redux
-- Backend complejo
-- Seguridad avanzada
-- Base de datos real
-- Arquitectura hexagonal compleja
-- Concurrencia real
-- Docker desde el inicio
-
-Porque aumentan muchísimo la complejidad sin aportar valor directo al PMN.
-
----
-
-# Objetivo Arquitectónico Final
-
-El sistema debe quedar como:
-
-## “Frontend enterprise-ready con backend simulado”
-
-permitiendo:
-
-- demostrar el sistema,
-- iterar rápidamente,
-- escalar después,
-- integrar backend futuro,
-- mantener orden arquitectónico.
-
----
-
-# Prioridades de Desarrollo
-
-## Prioridad Alta
-
-- Flujo principal
-- Navegación
-- Estados
-- Simulación operacional
-- Experiencia de uso
-- Trazabilidad visual
-
----
-
-## Prioridad Media
-
-- Diseño visual
-- Validaciones adicionales
-- Optimización UI
-
----
-
-## Prioridad Baja
-
-- Seguridad
-- Infraestructura
-- Escalabilidad real
-- Optimización backend
-
----
-
-# Riesgos Identificados
-
-## Riesgo 1 — Sobreingeniería
-
-Intentar construir un sistema enterprise completo demasiado temprano.
-
-## Riesgo 2 — Backend prematuro
-
-Perder tiempo en infraestructura en vez de demostrar el flujo.
-
-## Riesgo 3 — Exceso de pantallas
-
-Intentar representar demasiados escenarios.
-
-## Riesgo 4 — Mezclar lógica y UI
-
-No separar servicios, mocks y componentes.
-
----
-
-# Estrategia Recomendada
-
-## Fase 1
-- Wireframes
-- Flujo
-- Navegación
-
-## Fase 2
-- Pantallas
-- Componentes
-- Mock data
-
-## Fase 3
-- Estados
-- Simulación operacional
-- Excepciones
-
-## Fase 4
-- Pulido
-- Demo
-- Integración visual
-
----
-
-# Visión General
-
-Este proyecto busca representar un sistema empresarial de transferencias de stock capaz de demostrar:
-
-- consistencia operacional,
-- trazabilidad,
-- control de inventario,
-- flujo de decisiones,
-- manejo de excepciones,
-- simulación de escenarios concurrentes.
-
-El objetivo NO es construir inmediatamente un sistema productivo completo, sino desarrollar una base sólida, ordenada y preparada para evolucionar correctamente en futuras etapas.
+# Contribución al Proyecto
+
+1. Crear una rama para la característica (`git checkout -b feature/nueva-caracteristica`).
+2. Realizar commits atómicos y claros (`git commit -m 'Implementar nueva validación'`).
+3. Hacer push de la rama a tu repositorio (`git push origin feature/nueva-caracteristica`).
+4. Abrir un Pull Request (PR) detallando los cambios introducidos.
