@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react'
 import { supabase } from '../utils/supabaseClient'
 
 export type UserRole =
@@ -52,6 +52,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loadingSession, setLoadingSession] = useState<boolean>(true)
+  const userRef = useRef<AuthUser | null>(null)
+
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
   const fetchUserProfile = async (authUserId: string) => {
     try {
@@ -111,14 +116,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initSession()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setLoadingSession(true)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        await fetchUserProfile(session.user.id)
+        // Evitar recargar perfil si es un refresco de token y ya tenemos el usuario en memoria
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || !userRef.current) {
+          await fetchUserProfile(session.user.id)
+        }
       } else {
         setUser(null)
       }
-      setLoadingSession(false)
     })
 
     return () => {
